@@ -1,3 +1,6 @@
+---
+alwaysApply: true
+---
 # AppBase
 
 > A self-hosted Backend-as-a-Service platform for LAN environments and private VPCs — where data sovereignty, offline operation, and network-level control matter more than cloud scalability.
