@@ -1,6 +1,6 @@
 # AppBase — Architecture
 
-> This document is the canonical architecture reference. It covers two views: the **full system vision** (M1–M4) and the **current state** (M1 MVP, single process). Both views are kept here deliberately — the vision is locked, the MVP is what ships first.
+> This document is the canonical architecture reference. It covers both the **current M1 architecture** and the **target platform architecture**. M1 is a real, single-app BaaS unit that ships first. The master control plane, multi-app provisioning, and subdomain routing are added later without changing the core BaaS service boundaries.
 
 ---
 
@@ -19,83 +19,98 @@
 
 ## 1. Overview
 
-**Full vision.** AppBase runs on a single host machine on a LAN or private VPC. A master process (`apps/master/`) owns the control plane: it provisions and destroys Docker app containers, manages port assignments, announces services via mDNS, and monitors container health. Each registered app runs as an isolated container — a copy of `apps/api/` — with its own SQLite database, storage namespace, and API key scope. The admin dashboard (`apps/dashboard/`) is a Next.js UI that calls the master API; it is the operator's interface but not the engine. Client applications communicate directly with their app container through the `@appbase/sdk`.
+**Current architecture — M1.** AppBase starts as a single app-scoped BaaS unit. That unit contains the BaaS API (`apps/api/`), the app-specific dashboard UI (`apps/dashboard/`), one SQLite database, one storage namespace, and the JS/TS SDK used by external applications. The dashboard and API belong to the same app instance: the dashboard is used to manage API keys, users, storage, records, and documentation for that one app, while the API serves the SDK and any client consuming the BaaS.
 
-**Current state — M1 MVP.** There are no containers yet. The entire platform runs as a single Fastify process (`apps/api/`) on `localhost:3000`. Auth, Storage, Database, and Admin are four encapsulated plugins within that process. The SDK talks to this process directly. The dashboard calls the same process. The full architecture is what gets built in M2–M4; the MVP exists to prove the BaaS service layer and SDK DX end to end before any infrastructure complexity is introduced.
+**Target architecture — M2+.** Once the BaaS unit is stable, AppBase adds a master control plane at `appbase.local`. The master provisions and deletes app-specific BaaS instances, tracks health and infra state, manages port allocation, and eventually integrates reverse proxy routing, mDNS, and hosted app deployment. Each provisioned app gets its own BaaS unit with isolated DB and storage.
+
+**Routing model.** The future routing model is intentionally reserved now to avoid renaming later:
+
+- `appbase.local` — global master control plane
+- `dashboard.<app>.appbase.local` — dashboard for one app's BaaS
+- `api.<app>.appbase.local` — API for one app's BaaS
+- `<app>.appbase.local` — reserved for the hosted user-facing application later
 
 ---
 
 ## 2. Component Diagrams
 
-### M1 MVP — Single Process
+### Current Architecture — M1 Single-App BaaS Unit
 
 ```mermaid
 flowchart TB
-    subgraph client [Client Layer]
+    subgraph clients [Client Layer]
+        operator[Operator Browser]
+        demoApp[Demo Application]
         sdk["@appbase/sdk"]
-        dash[apps/dashboard\nNext.js]
     end
 
-    subgraph api [apps/api — Fastify — localhost:3000]
-        mw[API Key Middleware\nonRequest hook]
-        auth[Auth Plugin\n/auth/*]
-        storage[Storage Plugin\n/storage/*]
-        db[DB Plugin\n/db/*]
-        admin[Admin Plugin\n/admin/*]
-        mw --> auth
-        mw --> storage
-        mw --> db
-        mw --> admin
+    subgraph baas [Single App BaaS Unit]
+        dash[apps/dashboard\nNext.js\nlocalhost:3001]
+        subgraph api [apps/api — Fastify — localhost:3000]
+            mw[API Key Middleware\nonRequest hook]
+            auth[Auth Plugin\n/auth/*]
+            storage[Storage Plugin\n/storage/*]
+            db[DB Plugin\n/db/*]
+            admin[Admin Plugin\n/admin/*]
+            mw --> auth
+            mw --> storage
+            mw --> db
+            mw --> admin
+        end
     end
 
     sqlite[(appbase.sqlite\nDrizzle + better-sqlite3)]
     fs[data/storage/\nfilesystem]
 
     sdk -->|"HTTP (api key + JWT)"| api
+    demoApp --> sdk
+    operator -->|HTTP| dash
     dash -->|HTTP| api
     api --> sqlite
     api --> fs
 ```
 
-### Full Vision — M2+ — Master + App Containers
+### Target Platform Architecture — M2+ Master + App Instances
 
 ```mermaid
 flowchart TB
     subgraph lan [LAN / Private VPC]
         subgraph host [AppBase Host]
-            subgraph master [apps/master — Fastify — port 80]
-                mgmtApi[Management API\n/apps, /health]
+            subgraph master [appbase.local]
+                mgmtApi[Master Control Plane\napps, health, infra]
                 dockerPlugin[Docker SDK Plugin\ncontainer lifecycle]
                 mdnsPlugin[mDNS Announcer Plugin\nservice discovery]
                 healthPlugin[Health Monitor Plugin\nauto-restart]
                 caddy[Caddy Reverse Proxy\nprogrammatic config]
             end
 
-            dash[apps/dashboard\nNext.js]
-
-            subgraph c1 [App Container: password-manager — port 3101]
-                api1[apps/api\nAuth / Storage / DB / Admin]
-                db1[(password-manager.sqlite)]
+            subgraph c1 [App BaaS Instance: password-manager]
+                dash1[dashboard.password-manager.appbase.local]
+                api1[api.password-manager.appbase.local]
+                db1[(app.sqlite)]
+                fs1[(storage/)]
             end
 
-            subgraph c2 [App Container: inventory-system — port 3102]
-                api2[apps/api\nAuth / Storage / DB / Admin]
-                db2[(inventory-system.sqlite)]
-            end
+            hostedApp[password-manager.appbase.local\nreserved for hosted app later]
         end
 
         devDevice[Developer Device\n@appbase/sdk]
+        ownerBrowser[App Owner Browser]
     end
 
-    dash -->|"REST /apps/*"| master
-    master -->|"spawns / kills\nvia dockerode"| c1
-    master -->|"spawns / kills\nvia dockerode"| c2
-    caddy -->|"proxy :3101"| c1
-    caddy -->|"proxy :3102"| c2
-    devDevice -->|"app-name.appbase.local"| caddy
+    ownerBrowser -->|"https://appbase.local"| master
+    master -->|"provisions / deletes"| c1
+    ownerBrowser -->|"https://dashboard.password-manager.appbase.local"| dash1
+    dash1 -->|HTTP| api1
+    devDevice -->|"https://api.password-manager.appbase.local"| api1
+    api1 --> db1
+    api1 --> fs1
+    master -.-> hostedApp
 ```
 
-**Role of `apps/master/`.** The master process is not just an API server — it runs persistent background services as Fastify plugins with full `onReady`/`onClose` lifecycle hooks:
+**M1 operating model.** The dashboard and API are packaged as one app-specific BaaS unit. There is no global master yet, no app provisioning flow, and no subdomain routing layer. The demo application is external and consumes the BaaS through the SDK.
+
+**Role of `apps/master/` in M2+.** The master process is not an app data dashboard. It is the global control plane that provisions app instances and runs persistent background services as Fastify plugins with full `onReady`/`onClose` lifecycle hooks:
 
 | Plugin | Responsibility |
 |---|---|
@@ -104,7 +119,7 @@ flowchart TB
 | Health Monitor | Periodic liveness checks against `/health` on each container; triggers auto-restart on failure |
 | Caddy Config | Writes programmatic Caddy config entries when containers are created or destroyed |
 
-The Next.js dashboard is the operator's face. The master process is the engine.
+The app-specific dashboard stays part of each app instance. The master stays focused on orchestration, infra, health, and routing metadata.
 
 ---
 
@@ -238,7 +253,7 @@ sequenceDiagram
 
 ### M1 — Unified Schema
 
-All tables live in a single file: `data/appbase.sqlite`. Schema is defined in [`packages/db/src/schema/`](../packages/db/src/schema/) using Drizzle ORM and applied programmatically on startup via `drizzle-kit` migrations.
+All tables live in a single file: `data/appbase.sqlite`. This database belongs to the single app-specific BaaS instance shipped in M1. Schema is defined in [`packages/db/src/schema/`](../packages/db/src/schema/) using Drizzle ORM and applied programmatically on startup via `drizzle-kit` migrations.
 
 **`users`**
 
@@ -308,7 +323,7 @@ All tables live in a single file: `data/appbase.sqlite`. Schema is defined in [`
 
 ### M2+ — Split Schema
 
-When multi-app isolation is introduced, data splits into two database layers:
+When the master control plane and multi-app provisioning are introduced, data splits into two database layers:
 
 **`master.sqlite`** — owned by `apps/master/`, tracks the control plane:
 
@@ -317,15 +332,20 @@ When multi-app isolation is introduced, data splits into two database layers:
 | `registered_apps` | `id`, `name`, `slug`, `status`, `port`, `container_id`, `created_at` | One row per provisioned app |
 | `port_assignments` | `port`, `app_id`, `assigned_at` | Port registry for dynamic allocation |
 
-**`data/{appId}.sqlite`** — one file per registered app, contains the same 6 tables above (`users`, `refresh_tokens`, `api_keys`, `files`, `records`, `audit_log`), fully isolated. When an app is deleted via the master API, the container is destroyed and the entire `data/{appId}/` directory is removed.
+**`data/{appId}/app.sqlite`** — one file per registered app, contains the same 6 tables above (`users`, `refresh_tokens`, `api_keys`, `files`, `records`, `audit_log`), fully isolated. When an app is deleted via the master API, the whole BaaS instance is removed and the entire `data/{appId}/` directory is deleted.
 
 ---
 
 ## 5. API Surface Specification
 
+The API surface evolves in two stages:
+
+- **M1** — a single app-specific BaaS API (`apps/api/`) consumed by the SDK and by the app dashboard
+- **M2+** — the same app-specific BaaS API plus a separate master API (`apps/master/`) for orchestration
+
 ### App Container API — `apps/api/`
 
-The service API — consumed by `@appbase/sdk` and by the admin dashboard. All routes except `/auth/register` and `/auth/login` require a valid `x-api-key` header. Storage and database routes additionally require a valid `Authorization: Bearer {JWT}` for user-scoped operations.
+The service API — consumed by `@appbase/sdk` and by the app-specific dashboard. All routes except `/auth/register` and `/auth/login` require a valid `x-api-key` header. Storage and database routes additionally require a valid `Authorization: Bearer {JWT}` for user-scoped operations.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
@@ -350,9 +370,9 @@ The service API — consumed by `@appbase/sdk` and by the admin dashboard. All r
 | GET | `/health` | public | Liveness check |
 | GET | `/docs` | public | Swagger UI (auto-generated from route schemas) |
 
-### Master API — `apps/master/` (M2+)
+### Master API — `apps/master/`
 
-The control plane API — consumed only by `apps/dashboard/`. Manages app container lifecycle, API key issuance, and cluster health.
+The control plane API — introduced in M2 and consumed from `appbase.local`. It manages app provisioning, lifecycle, routing metadata, and infra/health visibility. App-specific API keys, users, files, and records remain owned by each app instance rather than the master.
 
 | Method | Path | Description |
 |---|---|---|
@@ -371,11 +391,14 @@ The control plane API — consumed only by `apps/dashboard/`. Manages app contai
 
 | Phase | Port | Process | Notes |
 |---|---|---|---|
-| M1 | `3000` | `apps/api/` — single process | Configurable via `PORT` env variable |
-| M2+ | `80` | `apps/master/` | Control plane + reverse proxy entry |
-| M2+ | `3100–3999` | App containers | Dynamically assigned per registration |
+| M1 | `3000` | `apps/api/` | App-specific BaaS API |
+| M1 | `3001` | `apps/dashboard/` | App-specific dashboard UI |
+| M2+ | `80/443` | Edge entrypoint | Routes `appbase.local`, `dashboard.<app>`, `api.<app>` |
+| M2+ | `3100–3999` | App BaaS instances | One upstream port assigned per app instance |
 
-**M2+ allocation algorithm** (runs inside `apps/master/` at container creation time):
+In M2+, each app-specific BaaS instance gets **one upstream port**. External subdomains route into that instance, and the instance dispatches dashboard traffic and API traffic internally.
+
+**Allocation algorithm** (runs inside `apps/master/` at container creation time):
 
 1. Query `port_assignments` for all currently assigned ports in range `3100–3999`
 2. Find the lowest integer in that range not present in the result set
@@ -403,14 +426,14 @@ data/
 ```
 data/
 ├── master.sqlite           # Control plane tables (registered_apps, port_assignments)
-└── {appId}/                # One directory per registered app (appId = nanoid)
+└── {appId}/                # One directory per provisioned app instance
     ├── app.sqlite          # Isolated app tables (same 6-table schema as M1)
     └── storage/
         └── {bucket}/
             └── {fileId}
 ```
 
-When `DELETE /apps/:id` is called on the master API, the container is stopped and removed, then the entire `data/{appId}/` directory is deleted. This is the full data lifecycle — no orphaned files, no orphaned SQLite rows.
+When `DELETE /apps/:id` is called on the master API, the app-specific BaaS instance is removed and the entire `data/{appId}/` directory is deleted. This keeps the lifecycle clean: no orphaned files, no orphaned SQLite rows.
 
 ---
 

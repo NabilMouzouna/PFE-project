@@ -60,20 +60,34 @@ Existing BaaS solutions fall into one of two failure modes for this use case:
 
 AppBase follows a **single-tenant deployment model**. Each organization runs its own isolated instance. This is a deliberate decision — not a limitation — consistent with the data sovereignty requirement of the target use case. This is the same model used by GitLab, Gitea, and Outline.
 
-### App Isolation
+### Current Architecture — M1
 
-When a developer creates an app through the dashboard:
+M1 is a **single app-scoped BaaS instance**. It contains:
 
-1. AppBase spins up a container from the base AppBase image
-1. Assigns an isolated port from the managed port range
-1. Creates a dedicated storage namespace
-1. Provisions an isolated SQLite database
-1. Issues a scoped API key bound to that app’s resources
-1. Registers the service via mDNS on the LAN
+- `apps/api/` — the Fastify BaaS API
+- `apps/dashboard/` — the app-specific dashboard UI
+- `data/appbase.sqlite` — the single SQLite database for that one app instance
+- `data/storage/` — the single storage namespace for that one app instance
 
-The app is then accessible at `http://{app-name}.AppBase.local` from any device on the network.
+This is not a throwaway prototype. It is the first real product slice: one app, one API, one dashboard, one SDK, one database, one storage layer.
 
-### System Topology
+### Target Platform Architecture — M2+
+
+When multi-app provisioning is introduced, AppBase adds a master control plane at `appbase.local`:
+
+1. The master provisions app-specific BaaS instances from the base AppBase image
+1. Each app instance gets an isolated port, database, and storage namespace
+1. The master monitors health, tracks infra state, and manages routing metadata
+1. App-specific dashboards and APIs are exposed under dedicated subdomains
+
+The routing model is:
+
+- `appbase.local` — master control plane
+- `dashboard.<app>.appbase.local` — app-specific BaaS dashboard
+- `api.<app>.appbase.local` — app-specific BaaS API
+- `<app>.appbase.local` — reserved for hosted user applications later
+
+### System Topology (Target Platform)
 
 ```
 LAN / Private VPC
@@ -81,24 +95,27 @@ LAN / Private VPC
 └── AppBase Host
       │
       ├── Master Process (port 80)
-      │     ├── Admin Dashboard
+      │     ├── Control Plane API
+      │     ├── Infra / Health Monitor
       │     ├── App Router (reverse proxy)
       │     ├── Docker SDK (container lifecycle)
       │     ├── mDNS Announcer
-      │     └── Health Monitor
+      │     └── Routing Metadata
       │
-      ├── App Container: inventory-system (port 3101)
+      ├── App BaaS Instance: inventory-system (port 3101)
+      │     ├── Dashboard UI
       │     ├── Auth API
       │     ├── Storage API
       │     └── Database API
       │
-      └── App Container: password-manager (port 3102)
+      └── App BaaS Instance: password-manager (port 3102)
+            ├── Dashboard UI
             ├── Auth API
             ├── Storage API
             └── Database API
 ```
 
-For a deeper, implementation-level view (components, data flows, schemas, and ports), see [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
+For a deeper, implementation-level view of both the current M1 architecture and the target platform architecture, see [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
 
 ### Tech Stack
 
@@ -111,7 +128,7 @@ For a deeper, implementation-level view (components, data flows, schemas, and po
 |DB Driver           |better-sqlite3                                       |
 |API Documentation   |OpenAPI via `@fastify/swagger` + Swagger UI          |
 |Frontend            |Next.js 16                                           |
-|Database            |SQLite (per app container)                           |
+|Database            |SQLite (`data/appbase.sqlite` in M1, per-app DB in M2+) |
 |Caching             |Deferred to M2 (SQLite is fast enough for M1)        |
 |Real-time           |Server-Sent Events (SSE)                             |
 |Job Queue           |BullMQ (in-process)                                  |
@@ -131,7 +148,7 @@ AppBase/
 │   ├── api/              # Core BaaS API
 │   └── dashboard/        # Admin UI (Next.js)
 ├── packages/
-│   ├── sdk/              # JS/TS client SDK (@homestack/sdk)
+│   ├── sdk/              # JS/TS client SDK (@appbase/sdk)
 │   ├── db/               # Schema + migrations
 │   ├── types/            # Shared TypeScript interfaces
 │   └── config/           # Shared tsconfig, eslint, prettier
@@ -155,7 +172,7 @@ AppBase/
 
 > Ship something real first. The full architecture above is the locked vision — the MVP is the shortest path to a demoable, end-to-end developer experience that proves the concept.
 
-**One container. One app. All three BaaS services working. Consumed by a real demo app through an SDK.**
+**One app-specific BaaS instance. One dashboard. One API. One SQLite database. One storage namespace. Consumed by a real demo app through an SDK.**
 
 ### What's In, What's Deferred
 
@@ -166,18 +183,32 @@ AppBase/
 | Database API (collections, CRUD, real-time SSE) | ✅ | — |
 | API key issuance + validation | ✅ | — |
 | SDK (JS/TS, wraps all 3 services) | ✅ | — |
-| Admin dashboard (basic — one app, users, usage) | ✅ | — |
+| App-specific dashboard (basic — API keys, users, usage) | ✅ | — |
+| Deployment service / app provisioning | ❌ | M2 |
 | Multi-app isolation | ❌ | M2 |
 | Container orchestration (dockerode) | ❌ | M2 |
 | Caddy + subdomain routing | ❌ | M3 |
 | mDNS service discovery | ❌ | M3 |
 | Health monitor + auto-restart | ❌ | M3 |
 | Frontend hosting | ❌ | M3/M4 |
-| infra.homestack.local control plane | ❌ | M4 |
+| `appbase.local` master control plane | ❌ | M2 |
+
+### MVP Runtime Shape
+
+In M1, the BaaS unit is one API plus one app-specific dashboard. The demo application is external and consumes the API through the SDK. There is **no** deployment service, **no** master control plane, and **no** multi-app routing yet.
+
+```
+Single host
+│
+├── Dashboard UI        → localhost:3001
+├── BaaS API            → localhost:3000
+├── SQLite              → data/appbase.sqlite
+└── File storage        → data/storage/
+```
 
 ### MVP API Surface
 
-Single container, single Fastify process, three service plugins behind API key validation middleware (`/auth/register` and `/auth/login` are public):
+The API side of that BaaS unit is a single Fastify process with three service plugins behind API key validation middleware (`/auth/register` and `/auth/login` are public):
 
 ```
 localhost:3000
@@ -214,9 +245,9 @@ localhost:3000
 The SDK is what makes this feel like Amplify and not just a REST API. It needs to do three things internally: store and refresh tokens automatically, inject the ID token into every storage/db request header, and manage the SSE subscription lifecycle.
 
 ```typescript
-import { HomeStack } from '@homestack/sdk'
+import { AppBase } from '@appbase/sdk'
 
-const client = HomeStack.init({
+const client = AppBase.init({
   endpoint: 'http://localhost:3000',
   apiKey: 'hs_live_xxxx'
 })
@@ -239,9 +270,17 @@ client.db.collection('passwords').subscribe((change) => {
 })
 ```
 
-### SQLite Strategy: One File Per App (M2-Ready)
+### SQLite Strategy
 
-Each registered app gets `data/{appId}.sqlite`. This costs roughly two extra hours in the MVP versus a shared schema-prefixed DB, but when M2 moves to container-per-app the file moves with no refactor — the abstraction is already correct.
+M1 uses a single SQLite file: `data/appbase.sqlite`. This is correct for the MVP because there is only one app-specific BaaS instance and no deployment service yet.
+
+In M2, the storage model splits cleanly:
+
+- `data/master.sqlite` for the control plane
+- `data/{appId}/app.sqlite` for each provisioned app
+- `data/{appId}/storage/` for each app's files
+
+That keeps M1 simple without forcing the master/provisioning layer to exist before it is actually needed.
 
 -----
 
@@ -257,24 +296,27 @@ Built vertically — one thin slice end to end first, then fill out:
 
 **Week 3** — Storage complete. SDK storage module. Demo app stores file attachments.
 
-**Week 4** — SSE real-time on DB. SDK `subscribe()`. Demo app updates live without refresh. Basic admin dashboard. Single `docker run` command starts everything.
+**Week 4** — SSE real-time on DB. SDK `subscribe()`. Demo app updates live without refresh. Basic app-specific dashboard. Single `docker run` command starts the BaaS unit.
 
-Deliverable: one container, three services, a working SDK, and a password manager demo that runs fully offline.
+Deliverable: one app-specific BaaS unit, a working SDK, and a password manager demo that runs fully offline.
 
 ### M2 — Container Orchestration (Weeks 5–6)
 
+- Master control plane at `appbase.local`
+- App provisioning / deletion service
 - Docker SDK integration (`dockerode`)
-- App creation spins up an isolated container
-- Per-app SQLite file migrates cleanly (foundation already set in M1)
+- App creation spins up an isolated BaaS instance
+- Per-app SQLite and storage namespaces
 - Port assignment and management
-- Basic routing from master to container
+- Master tracks app state and lifecycle
 
 ### M3 — Network Layer (Weeks 7–8)
 
-- Reverse proxy routing (`app.AppBase.local`)
+- Reverse proxy routing (`dashboard.<app>.appbase.local`, `api.<app>.appbase.local`)
 - mDNS service announcement and discovery
 - Health checks with auto-restart
 - Network isolation between app containers
+- Reserve `<app>.appbase.local` for hosted user applications
 
 ### M4 — Observability and Polish (Weeks 9–10)
 
@@ -287,14 +329,23 @@ Deliverable: one container, three services, a working SDK, and a password manage
 
 ## Demo Scenario
 
-1. Spin up AppBase on a local machine
-1. Open the admin dashboard — register a new app (`password-manager`)
-1. AppBase provisions a container, assigns a port, announces via mDNS
-1. Access `http://password-manager.AppBase.local` from another device on the LAN — it resolves
-1. The password manager app authenticates users, stores credentials, and retrieves files — all via AppBase APIs
+### M1 Demo Scenario
+
+1. Start the AppBase BaaS unit on a local machine
+1. Open the app-specific dashboard on `localhost:3001`
+1. Generate an API key and inspect app users, storage usage, and records
+1. Point the password manager demo app at `http://localhost:3000`
+1. The password manager authenticates users, stores credentials, uploads files, and receives live updates — all via the SDK
 1. **Pull the network cable to the internet.** Everything still works.
-1. Simulate a container crash. Watch the health monitor detect it and restart the container automatically.
-1. Show the network topology dashboard — live container states, port assignments, health status.
+
+### Full Platform Demo Scenario (M2+)
+
+1. Open `appbase.local`
+1. Create a new app (`password-manager`) from the master control plane
+1. AppBase provisions a BaaS instance, assigns a port, and registers routing metadata
+1. Open `dashboard.password-manager.appbase.local` to manage that app's BaaS
+1. Point the demo app at `api.password-manager.appbase.local`
+1. Later, host the actual user-facing application at `password-manager.appbase.local`
 
 -----
 
@@ -320,14 +371,11 @@ Deliverable: one container, three services, a working SDK, and a password manage
 
 ## ADR Index
 
-Architecture Decision Records are maintained in `/docs/adr/`. Key decisions documented:
+Architecture Decision Records are maintained in `/docs/adr/`. Current decisions documented:
 
 - `ADR-001` — API framework selection
 - `ADR-002` — ORM and migration strategy
-- `ADR-003` — SQLite vs PostgreSQL for Phase 1
-- `ADR-004` — Auth implementation approach
-- `ADR-005` — Reverse proxy selection
-- `ADR-006` — Container isolation vs schema isolation
+- `ADR-003` — Auth implementation strategy
 
 -----
 
