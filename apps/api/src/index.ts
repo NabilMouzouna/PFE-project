@@ -1,5 +1,14 @@
+import { config as loadDotenv } from "dotenv";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { buildApp } from "./app";
 import { loadEnv } from "./config/env";
+
+const currentFilePath = fileURLToPath(import.meta.url);
+const currentDir = path.dirname(currentFilePath);
+
+// Local `.env` is loaded for development convenience. Runtime-provided
+loadDotenv({ path: path.resolve(currentDir, "../.env"), quiet: true });
 
 async function main() {
   const env = loadEnv(process.env);
