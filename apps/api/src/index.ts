@@ -1,39 +1,43 @@
-import Fastify from "fastify";
-import cors from "@fastify/cors";
-import multipart from "@fastify/multipart";
-import swagger from "@fastify/swagger";
-import swaggerUi from "@fastify/swagger-ui";
-import { createDb } from "@appbase/db";
+import { config as loadDotenv } from "dotenv";
 import path from "node:path";
-import fs from "node:fs";
+import { fileURLToPath } from "node:url";
+import { buildApp } from "./app";
+import { loadEnv } from "./config/env";
 
-const DB_PATH = process.env["DB_PATH"] ?? "data/appbase.sqlite";
-const PORT = Number(process.env["PORT"] ?? 3000);
-const HOST = process.env["HOST"] ?? "0.0.0.0";
+const currentFilePath = fileURLToPath(import.meta.url);
+const currentDir = path.dirname(currentFilePath);
 
-fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+// Local `.env` is loaded for development convenience. Runtime-provided
+loadDotenv({ path: path.resolve(currentDir, "../.env"), quiet: true });
 
-const db = createDb(DB_PATH);
+async function main() {
+  const env = loadEnv(process.env);
+  const app = await buildApp({ env });
 
-const app = Fastify({ logger: true });
+  const shutdown = async (signal: NodeJS.Signals) => {
+    app.log.info({ signal }, "Shutting down AppBase API");
+    await app.close();
+    process.exit(0);
+  };
 
-await app.register(cors, { origin: true });
-await app.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
-await app.register(swagger, {
-  openapi: {
-    info: { title: "AppBase API", version: "0.1.0" },
-    components: {
-      securitySchemes: {
-        bearerAuth: { type: "http", scheme: "bearer" },
-        apiKey: { type: "apiKey", in: "header", name: "x-api-key" },
-      },
-    },
-  },
-});
-await app.register(swaggerUi, { routePrefix: "/docs" });
+  process.on("SIGINT", () => {
+    void shutdown("SIGINT");
+  });
 
-app.decorate("db", db);
+  process.on("SIGTERM", () => {
+    void shutdown("SIGTERM");
+  });
 
-app.get("/health", async () => ({ status: "ok" }));
+  await app.listen({ host: env.HOST, port: env.PORT });
+  app.log.info(
+    { host: env.HOST, port: env.PORT, dbPath: env.DB_PATH },
+    "AppBase API started",
+  );
+}
 
-await app.listen({ port: PORT, host: HOST });
+try {
+  await main();
+} catch (error) {
+  console.error("Failed to start AppBase API", error);
+  process.exit(1);
+}
