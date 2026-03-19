@@ -63,6 +63,15 @@ Optional / reserved values:
 - `AUTH_SECRET`:
   reserved for the planned `better-auth` integration
 
+### Local Environment Files
+
+- `.env` is used for local development convenience
+- `.env.example` documents the expected variables for the API package
+- runtime-provided environment variables still take precedence over `.env`
+
+This means local `pnpm dev` can work with `apps/api/.env`, while Docker and
+production deployments can inject variables normally at runtime.
+
 ## Available Endpoints
 
 ### `GET /health`

@@ -1,3 +1,7 @@
+/*
+* TODO:we will consistently update this file to check all services (database, filesystem ...) are running (fail early), 
+*/
+
 import type { FastifyInstance } from "fastify";
 
 const healthRouteSchema = {
