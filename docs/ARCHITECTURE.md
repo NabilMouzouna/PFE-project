@@ -123,6 +123,18 @@ flowchart TB
 
 The app-specific dashboard stays part of each app instance. The master stays focused on orchestration, infra, health, and routing metadata.
 
+### 2.3 Instance Bootstrap and API Key Lifecycle
+
+Each BaaS instance is **one app**. The API key identifies that app to the API. The lifecycle is:
+
+**M1 — Instance bootstrap.** When the API starts, it checks whether an API key exists for this app. If none exists, it creates one automatically. The key is logged once at startup so the operator can copy it for use in the SDK or `.env`. This happens during the `onReady` (or equivalent) phase after the database is ready. No manual script is required for first-run setup.
+
+**M2+ — Provisioning flow.** When the master provisions a new app via `POST /apps`, it creates the BaaS instance (container) and generates the first API key in the same step. The key is returned in the response and displayed in the master or app dashboard for the operator to copy. Same pattern as M1, but triggered by orchestration instead of local startup.
+
+**One active key per instance.** One BaaS instance serves one application. Storing multiple valid keys would create ambiguity: which key should the app use, and how to revoke without affecting others. Therefore, at any time there is **at most one valid API key** per app instance. When the user requests key rotation (e.g. via the dashboard), the old key is revoked before or atomically with issuing the new one. The application must update its configuration with the new key; the old key immediately stops working.
+
+The dashboard will expose the current API key for copy/paste (or a "Regenerate" action that performs rotate-in-place). Audit log entries record key creation and rotation.
+
 ---
 
 ## 3. Data Flow Diagrams
