@@ -10,7 +10,7 @@ export default function Home() {
         <h1 className="mt-3 text-5xl font-extrabold leading-[0.96] md:text-7xl">
           Todo app that feels
           <br />
-          <span className="text-[var(--accent)]">designed, not generated.</span>
+          <span className="text-(--accent)">designed, not generated.</span>
         </h1>
         <p className="mt-5 max-w-2xl text-base opacity-80 md:text-lg">
           Start with auth, land in a protected dashboard, and manage todos with SDK-powered CRUD.
@@ -35,7 +35,7 @@ export default function Home() {
           <p className="mt-2 text-sm opacity-75">Continue where you left off.</p>
         </Link>
         <Link
-          className="app-card bg-[var(--panel)] p-5 transition hover:-translate-y-1"
+          className="app-card bg-(--panel) p-5 transition hover:-translate-y-1"
           href="/dashboard"
         >
           <p className="text-sm opacity-70">Protected area</p>

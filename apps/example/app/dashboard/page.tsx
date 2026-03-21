@@ -32,7 +32,7 @@ function mapTodo(record: RawCollectionRecord): Todo {
 export default function DashboardPage() {
   const router = useRouter();
   const appBase = useAppBase();
-  const { hasSession } = useRequireAuth("/sign-in");
+  const { hasSession, authHydrated } = useRequireAuth("/sign-in");
   const { signOut, getSession } = appBase.auth;
   const todosCollection = useMemo(() => appBase.db.collection("todos"), [appBase]);
 
@@ -53,9 +53,9 @@ export default function DashboardPage() {
   }, [todosCollection]);
 
   useEffect(() => {
-    if (!hasSession) return;
+    if (!authHydrated || !hasSession) return;
     void loadTodos();
-  }, [hasSession, loadTodos]);
+  }, [authHydrated, hasSession, loadTodos]);
 
   const createTodo = async () => {
     if (!title.trim()) {
@@ -118,6 +118,14 @@ export default function DashboardPage() {
     }
   };
 
+  if (!authHydrated) {
+    return (
+      <main className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center p-6">
+        <p className="text-sm opacity-75">Restoring session...</p>
+      </main>
+    );
+  }
+
   if (!hasSession) {
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center p-6">
@@ -140,12 +148,12 @@ export default function DashboardPage() {
             <p className="mt-2 text-sm opacity-75">Signed in as {userEmail}</p>
           </div>
           <div className="flex gap-2">
-            <Link className="rounded-lg border-2 border-[var(--line)] px-3 py-2 text-sm" href="/">
+            <Link className="rounded-lg border-2 border-var(--line) px-3 py-2 text-sm" href="/">
               Home
             </Link>
             <button
               disabled={busy}
-              className="rounded-lg border-2 border-[var(--line)] bg-[var(--accent)] px-3 py-2 text-sm text-[#fffaf0] disabled:opacity-60"
+              className="rounded-lg border-2 border-var(--line) bg-var(--accent) px-3 py-2 text-sm text-[#fffaf0] disabled:opacity-60"
               onClick={onSignOut}
             >
               Sign out
@@ -177,13 +185,13 @@ export default function DashboardPage() {
       <section className="app-card p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Your todos</h2>
-          <button className="rounded-lg border-2 border-[var(--line)] px-3 py-2 text-sm" onClick={loadTodos} disabled={busy}>
+          <button className="rounded-lg border-2 border-var(--line) px-3 py-2 text-sm" onClick={loadTodos} disabled={busy}>
             Refresh
           </button>
         </div>
 
         {todos.length === 0 ? (
-          <p className="rounded-lg border-2 border-dashed border-[var(--line)] p-6 text-center text-sm opacity-75">
+          <p className="rounded-lg border-2 border-dashed border-var(--line) p-6 text-center text-sm opacity-75">
             No todos yet. Add one above to get started.
           </p>
         ) : (
@@ -204,7 +212,7 @@ export default function DashboardPage() {
                   </div>
                 </button>
                 <button
-                  className="rounded-lg border-2 border-[var(--line)] bg-[var(--panel)] px-3 py-1 text-sm"
+                  className="rounded-lg border-2 border-var(--line) bg-var(--panel) px-3 py-1 text-sm"
                   onClick={() => removeTodo(todo.id)}
                   disabled={busy}
                 >

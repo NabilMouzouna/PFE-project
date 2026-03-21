@@ -34,32 +34,53 @@ The public contract is stable across both phases; only the base URL changes.
 
 ## 3. Authentication and Headers
 
-### 3.1 Header Types
+### 3.1 Client profiles (how the session / refresh is carried)
+
+The **access token** is always a JWT sent as `Authorization: Bearer <access-token>` on `/storage/*` and `/db/*`.
+
+The **session** (refresh credential) can be carried in two ways:
+
+| Profile | Typical client | Session on `/auth/refresh` and `/auth/logout` | Browser `fetch` |
+|---|---|---|---|
+| **Bearer** | Node, automation, non-browser SDKs | `Authorization: Bearer <session-token>` (from `refreshToken` in login/register JSON) | Default: no cookies |
+| **Browser cookie** (recommended default for SPAs) | First-party browser apps | Valid **session cookie** (set on login/register); client sends **`credentials: 'include'`** | Required on `/auth/*` |
+
+The client selects the profile in configuration (e.g. SDK `authTransport: 'bearer' | 'cookie'`). The server **may** emit `Set-Cookie` even when the client uses Bearer; Bearer clients **should** ignore that cookie if they persist `refreshToken` from JSON.
+
+**LAN / HTTP:** Until the API is served over HTTPS, the session cookie **must not** use the `Secure` flag (browsers will not send it on `http://`). **`HttpOnly` does not require HTTPS** — implementations **should** use `HttpOnly` when the stack supports cookie-only refresh reliably; if not, a **non-`HttpOnly`** session cookie is allowed as a **transitional** mode (XSS can read it — document risk). When HTTPS is enabled, tighten to **`HttpOnly` + `Secure`** and re-evaluate `SameSite`. See ADR-003 (amendment 2026-03-20).
+
+**CORS (cookie profile):** Responses **must** include `Access-Control-Allow-Credentials: true` and a **specific** `Access-Control-Allow-Origin` (never `*` with credentials). Allowed origins are instance configuration.
+
+### 3.2 Header Types
 
 | Header | Format | Used For |
 |---|---|---|
 | `x-api-key` | `hs_live_<token>` | Identifies the app/BaaS instance |
-| `Authorization` | `Bearer <session-token>` | Session-oriented auth endpoints such as token refresh and logout |
+| `Authorization` | `Bearer <session-token>` | Session lifecycle when using **Bearer profile** (`/auth/refresh`, `/auth/logout`) |
 | `Authorization` | `Bearer <access-token>` | Protected storage and database operations |
+| `Cookie` | `appbase_session=...` | Session lifecycle when using **Browser cookie profile** (browser sends automatically) |
 
-### 3.2 Rules by Endpoint Group
+Public session cookie name **SHOULD** be `appbase_session` unless operators are documented otherwise.
 
-| Endpoint Group | Required Headers |
+### 3.3 Rules by Endpoint Group
+
+| Endpoint Group | Required credentials |
 |---|---|
 | `POST /auth/register` | none |
 | `POST /auth/login` | none |
-| `POST /auth/refresh` | `Authorization: Bearer <session-token>` |
-| `POST /auth/logout` | `Authorization: Bearer <session-token>` |
+| `POST /auth/refresh` | **Bearer:** `Authorization: Bearer <session-token>` **or** **Cookie:** valid session cookie + `credentials: 'include'` |
+| `POST /auth/logout` | Same as refresh |
 | `/storage/*` | `x-api-key` + `Authorization: Bearer <access-token>` |
 | `/db/*` | `x-api-key` + `Authorization: Bearer <access-token>` |
 
-### 3.3 Token Semantics
+### 3.4 Token Semantics
 
-- **Session token**: long-lived token used only for session lifecycle operations such as refresh and logout
-- **Access token**: short-lived bearer token used for protected BaaS operations
-- **API key**: app-scoped key required on all storage and database requests
+- **Session token** (Bearer profile): opaque token used only for refresh and logout; returned as `refreshToken` in JSON.
+- **Session cookie** (Browser cookie profile): server-set cookie carrying the same session; **not** sent on `/storage/*` or `/db/*` unless misconfigured — access still uses the JWT.
+- **Access token**: short-lived JWT for protected BaaS operations.
+- **API key**: app-scoped key required on all storage and database requests.
 
-The SDK is responsible for storing tokens and attaching the correct one to each request.
+The SDK is responsible for attaching the correct headers/credentials per profile. **Do not** persist `refreshToken` in `localStorage` when using **Browser cookie profile**; rely on the cookie for refresh.
 
 ---
 
@@ -108,6 +129,10 @@ All JSON endpoints return one of the following envelopes.
 
 > Auth is implemented internally with `better-auth`, but the routes below are the stable public AppBase contract.
 
+**Browser cookie profile:** On successful `/auth/register` and `/auth/login`, the server **sets** a session `Set-Cookie`. Clients **must** use `credentials: 'include'` on `/auth/refresh` and `/auth/logout`. `refreshToken` in JSON **may be omitted** in this profile.
+
+**Bearer profile:** Responses include `refreshToken` in JSON; `/auth/refresh` and `/auth/logout` require `Authorization: Bearer <session-token>`.
+
 ### 5.1 POST `/auth/register`
 
 Creates a new user account for the current app.
@@ -130,6 +155,8 @@ Creates a new user account for the current app.
 
 **Success response**
 
+**Headers:** May include `Set-Cookie` for the session (**Browser cookie profile**).
+
 ```json
 {
   "success": true,
@@ -146,6 +173,8 @@ Creates a new user account for the current app.
   }
 }
 ```
+
+In **Browser cookie profile**, `refreshToken` **may be omitted** or `null`. `accessToken` and `expiresIn` remain for `Authorization` on `/storage/*` and `/db/*`.
 
 ### 5.2 POST `/auth/login`
 
@@ -169,17 +198,23 @@ Authenticates a user and issues a new session.
 
 **Success response**
 
-Same schema as `POST /auth/register`.
+Same schema as `POST /auth/register` (including optional omission of `refreshToken` under Browser cookie profile).
+
+**Headers:** May include `Set-Cookie` (session established or rotated).
 
 ### 5.3 POST `/auth/refresh`
 
-Refreshes the access token using a valid session token.
+Refreshes the access token using a valid session (**Bearer** or **cookie**).
 
-**Headers**
+**Bearer profile — headers**
 
 ```http
 Authorization: Bearer <session-token>
 ```
+
+**Browser cookie profile — headers**
+
+No `Authorization` required when a valid session cookie is sent. Use `fetch(..., { credentials: 'include' })` so the browser attaches `Cookie`.
 
 **Request body**
 
@@ -197,15 +232,23 @@ No body.
 }
 ```
 
+**Headers:** May include `Set-Cookie` if the implementation rotates the session cookie.
+
+In **Bearer profile**, the response **may** include a new `refreshToken` if the server rotates the session token (optional; clients should persist when present).
+
 ### 5.4 POST `/auth/logout`
 
-Revokes the active session token.
+Revokes the active session.
 
-**Headers**
+**Bearer profile — headers**
 
 ```http
 Authorization: Bearer <session-token>
 ```
+
+**Browser cookie profile**
+
+`POST` with `credentials: 'include'`; session identified by cookie. `Authorization` is optional if the cookie is present.
 
 **Request body**
 
@@ -532,5 +575,5 @@ data: {"type":"created","collection":"passwords","record":{"id":"rec_123","site"
 
 - This file defines the public AppBase contract.
 - `docs/ARCHITECTURE.md` explains how that contract is hosted and routed.
-- `better-auth` is an internal implementation choice, not the public route namespace.
+- `better-auth` is an internal implementation choice, not the public route namespace; the **Browser cookie profile** may map to better-auth’s session cookie internally while the **public** behavior (CORS, optional `refreshToken` in JSON, LAN-safe cookie flags) is defined here and in ADR-003.
 - Dashboard authentication is intentionally separate from the public API contract.

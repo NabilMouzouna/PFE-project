@@ -49,10 +49,10 @@ export default function SignInPage() {
         <h1 className="text-4xl font-extrabold">Welcome back</h1>
         <p className="mt-2 text-sm opacity-75">Access your protected dashboard and manage todos.</p>
         <div className="mt-4 flex gap-2">
-          <Link className="rounded-lg border-2 border-[var(--line)] px-3 py-2" href="/">
+          <Link className="rounded-lg border-2 border-var(--line) px-3 py-2" href="/">
             Home
           </Link>
-          <Link className="rounded-lg border-2 border-[var(--line)] px-3 py-2" href="/sign-up">
+          <Link className="rounded-lg border-2 border-var(--line) px-3 py-2" href="/sign-up">
             Create account
           </Link>
         </div>
@@ -94,7 +94,7 @@ export default function SignInPage() {
         <h2 className="text-lg font-semibold">Activity</h2>
         <ul className="mt-3 grid gap-2">
           {logs.map((log, i) => (
-            <li key={`${log.at}-${i}`} className="rounded-lg border-2 border-[var(--line)] bg-[var(--panel)] p-2 text-sm">
+            <li key={`${log.at}-${i}`} className="rounded-lg border-2 border-(--line) bg-(--panel) p-2 text-sm">
               <div className="font-mono">[{log.at}] {log.message}</div>
             </li>
           ))}

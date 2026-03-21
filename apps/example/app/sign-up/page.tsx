@@ -49,10 +49,10 @@ export default function SignUpPage() {
         <h1 className="text-4xl font-extrabold">Create your account</h1>
         <p className="mt-2 text-sm opacity-75">Create an account, then jump directly to your protected dashboard.</p>
         <div className="mt-4 flex gap-2">
-          <Link className="rounded-lg border-2 border-[var(--line)] px-3 py-2" href="/">
+          <Link className="rounded-lg border-2 border-(--line) px-3 py-2" href="/">
             Home
           </Link>
-          <Link className="rounded-lg border-2 border-[var(--line)] px-3 py-2" href="/sign-in">
+          <Link className="rounded-lg border-2 border-(--line) px-3 py-2" href="/sign-in">
             Go to sign in
           </Link>
         </div>
@@ -94,7 +94,7 @@ export default function SignUpPage() {
         <h2 className="text-lg font-semibold">Activity</h2>
         <ul className="mt-3 grid gap-2">
           {logs.map((log, i) => (
-            <li key={`${log.at}-${i}`} className="rounded-lg border-2 border-[var(--line)] bg-[var(--panel)] p-2 text-sm">
+            <li key={`${log.at}-${i}`} className="rounded-lg border-2 border-(--line) bg-(--panel) p-2 text-sm">
               <div className="font-mono">[{log.at}] {log.message}</div>
             </li>
           ))}

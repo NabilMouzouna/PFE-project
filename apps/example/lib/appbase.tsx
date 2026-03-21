@@ -1,21 +1,44 @@
 "use client";
 
 import { AppBase } from "@appbase/sdk";
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getPublicEnv } from "./env";
 
-const AppBaseContext = createContext<AppBase | null>(null);
+type AppBaseContextValue = {
+  appBase: AppBase;
+  /** False until persisted session hydration (and optional token refresh) finishes. */
+  authHydrated: boolean;
+};
+
+const AppBaseContext = createContext<AppBaseContextValue | null>(null);
 
 export function AppBaseProvider({ children }: { children: ReactNode }) {
+  const [authHydrated, setAuthHydrated] = useState(false);
+
   const appBase = useMemo(() => {
     const env = getPublicEnv();
     return AppBase.init({
       endpoint: env.endpoint,
       apiKey: env.apiKey,
+      sessionStorageKey: "appbase_example_session",
     });
   }, []);
 
-  return <AppBaseContext.Provider value={appBase}>{children}</AppBaseContext.Provider>;
+  useEffect(() => {
+    let cancelled = false;
+    void appBase.auth
+      .hydratePersistedSession()
+      .finally(() => {
+        if (!cancelled) setAuthHydrated(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [appBase]);
+
+  const value = useMemo(() => ({ appBase, authHydrated }), [appBase, authHydrated]);
+
+  return <AppBaseContext.Provider value={value}>{children}</AppBaseContext.Provider>;
 }
 
 export function useAppBase(): AppBase {
@@ -23,5 +46,13 @@ export function useAppBase(): AppBase {
   if (!value) {
     throw new Error("useAppBase must be used inside <AppBaseProvider>");
   }
-  return value;
+  return value.appBase;
+}
+
+export function useAuthHydrated(): boolean {
+  const value = useContext(AppBaseContext);
+  if (!value) {
+    throw new Error("useAuthHydrated must be used inside <AppBaseProvider>");
+  }
+  return value.authHydrated;
 }

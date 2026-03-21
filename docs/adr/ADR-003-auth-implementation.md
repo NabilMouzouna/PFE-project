@@ -1,6 +1,6 @@
 # ADR-003 — Auth Implementation Strategy
 
-**Status:** Accepted (amended 2026-03-17)  
+**Status:** Accepted (amended 2026-03-20)  
 **Date:** 2026-03-17  
 **Deciders:** AppBase core team  
 **Tags:** `backend`, `auth`, `security`, `api-keys`
@@ -21,7 +21,14 @@ The SDK contract is defined in the README:
 
 > *"store and refresh tokens automatically, inject the ID token into every storage/db request header, and manage the SSE subscription lifecycle"*
 
-This establishes that token delivery is header-based (not cookie-based), that tokens are managed client-side by the SDK, and that silent refresh is a first-class SDK responsibility. The `/auth/refresh` endpoint already appears in the MVP API surface.
+This establishes that the **access token (JWT)** is delivered and attached via **headers** for storage/db/SSE, and that **silent refresh** is a first-class SDK responsibility.
+
+**Amendment (2026-03-20):** The **session / refresh** credential is **not** required to live in `localStorage` for browser apps. AppBase supports two **session transport profiles** (see amendment section below):
+
+1. **Bearer profile** — session token in JSON + `Authorization: Bearer` on refresh/logout (Node, automation, non-browser SDKs).
+2. **Browser cookie profile** — server sets a **session cookie** on login/register; refresh/logout use `credentials: 'include'` without putting the refresh token in `localStorage`. This avoids duplicating highly sensitive refresh material in JS-accessible storage when combined with hardening flags.
+
+**LAN / HTTP vs HTTPS:** M1 often runs on `http://` (LAN, VPS without TLS yet). Cookies **must not** use the `Secure` flag until the deployment serves HTTPS; otherwise browsers will not send the cookie. **`HttpOnly` does not require HTTPS** — it only blocks JavaScript from reading the cookie. For early LAN deployments we allow a **non-`HttpOnly`** session cookie if needed for interoperability; when HTTPS is enabled, implementations **should** set **`HttpOnly`** and **`Secure`** and tighten `SameSite` (see amendment).
 
 The auth system must work entirely offline — no external identity provider, no network call outside the LAN. All cryptographic operations are local.
 
@@ -37,6 +44,43 @@ The auth system must work entirely offline — no external identity provider, no
 6. **Password hashing:** argon2id (configured via better-auth)
 7. **API key format:** `hs_live_` prefix via `@better-auth/api-key` plugin
 8. **JWT signing algorithm:** EdDSA (Ed25519) — asymmetric, JWKS-based verification
+9. **Session transport profiles:** **Bearer** (session in header/body) and **Browser cookie** (session in `Set-Cookie`). See **Amendment (2026-03-20)**. Access JWT remains header-based for `/storage/*` and `/db/*`. Do not persist refresh + access together in `localStorage` as the default browser strategy when cookie profile is used.
+
+---
+
+## Amendment (2026-03-20) — Browser cookie profile for session (refresh)
+
+### Motivation
+
+- Storing **both** access and refresh tokens in `localStorage` gives **good reload UX** but duplicates XSS exposure for the **refresh** credential.
+- Browser **same-origin** or **CORS-with-credentials** flows can carry the session in a **cookie**, so the SDK does not need a long-lived refresh string in `localStorage`.
+- **LAN / HTTP:** many instances use plain HTTP until TLS is deployed. **`Secure` cookies require HTTPS** — so M1 cookie defaults must work **without** `Secure`. **`HttpOnly` is independent of HTTPS** and should be preferred as soon as the stack can set it reliably; until then, a **non-`HttpOnly`** cookie is an allowed **compatibility** mode with documented XSS risk.
+
+### Two profiles (normative for product design)
+
+| Profile | Typical client | Session (refresh) transport | Access JWT |
+|--------|----------------|-----------------------------|------------|
+| **Bearer** | Node, scripts, mobile, some SPAs | Returned in JSON + `Authorization: Bearer` on `/auth/refresh` and `/auth/logout` | `Authorization: Bearer` on `/storage/*`, `/db/*` |
+| **Browser cookie** | First-party browser app | HTTP cookie (name e.g. `appbase_session`, exact value implementation-defined) set on `/auth/register` and `/auth/login`; sent automatically on `/auth/refresh`, `/auth/logout` when `credentials: 'include'` | Still `Authorization: Bearer` (may be held in memory or short-lived storage — product choice); **not** the session cookie |
+
+### Cookie attribute ladder (roll forward as deployment matures)
+
+1. **M1 / HTTP (LAN):** `Path`, `SameSite` (prefer `Lax` for same-site SPAs); **no** `Secure`. `HttpOnly` **recommended** where the framework can set it; if not, **omit `HttpOnly`** temporarily and document XSS exposure.
+2. **HTTPS available:** add **`Secure`** + **`HttpOnly`**; re-evaluate `SameSite=None` only if cross-site credentialed requests are required (then **must** pair with `Secure` and CSRF defenses).
+
+### CORS and CSRF
+
+- Browser cookie profile requires **`Access-Control-Allow-Credentials: true`** and an **explicit allowlist** of origins (never `*` with credentials).
+- Prefer **same-origin** API + SPA hosting to minimize CSRF surface. If cross-origin, document required mitigations (e.g. CSRF token, strict origin checks).
+
+### SDK behavior
+
+- **`authTransport: 'cookie'`** (or equivalent): auth calls use `fetch(..., { credentials: 'include' })`; **do not** persist `refreshToken` from JSON; rely on cookie for refresh.
+- **`authTransport: 'bearer'`** (default for non-browser): current behavior; full session may use `StorageAdapter` as today.
+
+### better-auth note
+
+Implementation may map the public cookie name and Fastify `Set-Cookie` to better-auth’s native session cookie mechanism. The **public contract** is defined in `API-SPEC.md`; internal cookie names may differ if documented for operators.
 
 ---
 
@@ -285,7 +329,7 @@ Three distinct tokens with different lifetimes and purposes, mirroring the model
 Refresh token (session):  opaque random string, EdDSA-signed session
   managed by:  better-auth sessions table
   TTL:         7 days, sliding window (renewed on use)
-  delivery:    Authorization: Bearer <session-token>  (Bearer plugin)
+  delivery:    (Profile-dependent) Authorization: Bearer <session-token>  OR  HTTP cookie (browser profile)
 
 Access token:  JWT, signed EdDSA (Ed25519)
   payload:     { sub, email, appId, iat, exp }
@@ -520,6 +564,8 @@ The `appId` claim is a custom field on the `user` table (added via better-auth s
 - better-auth is a relatively young library (emerged late 2024). The API has stabilized in v1.x, but fewer production deployments exist compared to Passport.js or Auth0. Mitigated by pinning a specific version and reviewing the changelog before upgrades.
 - The `argon2` native dependency requires compilation during `docker build`. Multi-arch builds (`linux/amd64`, `linux/arm64`) must both be verified in CI.
 - The SDK must handle JWT refresh failure during network loss on the LAN (not internet loss — but brief LAN interruptions are possible). The SDK needs retry-with-backoff before treating the session as expired.
+- **Browser cookie profile** introduces **CORS + CSRF** obligations; misconfiguration can weaken security more than Bearer-only clients. Cookie profile must ship with **documented** origin allowlists and a path to **`HttpOnly` + `Secure`** when HTTPS is enabled.
+- **Non-`HttpOnly` session cookies** (allowed only as a transitional LAN measure) are **readable by XSS** — same class of risk as `localStorage`; operators should move to **`HttpOnly`** as soon as practical.
 
 **Neutral:**
 - `/auth/reset-password` is deferred from MVP. Password reset is admin-mediated: `auth.api.setUserPassword` from the admin plugin. A self-service SMTP-based reset can be added in a future milestone by wiring better-auth's `sendResetPassword` callback without changing the token or session architecture.

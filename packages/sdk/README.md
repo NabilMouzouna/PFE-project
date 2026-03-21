@@ -10,7 +10,13 @@ import { AppBase } from "@appbase/sdk";
 const appbase = AppBase.init({
   endpoint: "http://localhost:3000",
   apiKey: "hs_live_your_instance_api_key",
+  // Optional: persist access token + user across reloads (localStorage).
+  // Refresh token is kept in memory only (Bearer for /auth/refresh).
+  sessionStorageKey: "my_app_session",
 });
+
+// After mount: if access JWT is stale and refresh is still in memory, refresh; if stale after a cold load, session is cleared.
+await appbase.auth.hydratePersistedSession();
 ```
 
 The SDK currently exposes:

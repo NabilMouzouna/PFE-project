@@ -49,5 +49,8 @@ Both are validated in `lib/env.ts`.
 
 ## Notes
 
-- Session is currently client-memory based (SDK default).
+- **Access token** (+ user + expiry metadata) is persisted in `localStorage` under `appbase_example_session`.
+- **Refresh token** stays **in memory only** (used as `Authorization: Bearer` for `/auth/refresh` and `/auth/logout`). After a full reload you keep working until the access JWT expires; then sign in again (no silent refresh without refresh in memory).
+- On load, `hydratePersistedSession()` refreshes only if the access token is stale **and** a refresh token is still in memory.
+- **Security:** localStorage for access tokens is a tradeoff; httpOnly cookies are stricter for production.
 - Make sure your API key can access auth and db endpoints.
