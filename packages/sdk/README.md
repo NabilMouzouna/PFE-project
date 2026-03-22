@@ -15,6 +15,9 @@ const appbase = AppBase.init({
 
 const { signIn, signOut, signUp, getAuthState } = appbase.auth;
 const { authenticated, user } = getAuthState();
+
+const todos = appbase.db.collection("todos");
+const { items } = await todos.list();
 ```
 
 ## Services
@@ -22,5 +25,5 @@ const { authenticated, user } = getAuthState();
 | Service | Status |
 |---------|--------|
 | **`appbase.auth`** | [Auth docs](./docs/auth-service.md) |
-| **`appbase.db`** | Placeholder |
+| **`appbase.db`** | [Database docs](./docs/db-service.md) |
 | **`appbase.storage`** | Placeholder |

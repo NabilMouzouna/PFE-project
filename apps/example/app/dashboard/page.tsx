@@ -3,37 +3,28 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { z } from "zod";
 import { useAppBase, useAuth, useRequireAuth } from "@/lib/appbase";
+import type { DbRecord } from "@appbase/sdk";
 
-type RawCollectionRecord = {
-  id: string;
-  data: Record<string, unknown>;
-  createdAt: string;
-};
+const TodoSchema = z.object({
+  title: z.string(),
+  done: z.boolean(),
+  createdAt: z.string(),
+});
 
-type Todo = {
-  id: string;
-  title: string;
-  done: boolean;
-  createdAt: string;
-};
-
-function mapTodo(record: RawCollectionRecord): Todo {
-  return {
-    id: record.id,
-    title: typeof record.data.title === "string" ? record.data.title : "Untitled",
-    done: Boolean(record.data.done),
-    createdAt:
-      typeof record.data.createdAt === "string" ? record.data.createdAt : record.createdAt,
-  };
-}
+type TodoData = z.infer<typeof TodoSchema>;
+type Todo = DbRecord<TodoData>;
 
 export default function DashboardPage() {
   const router = useRouter();
   const appBase = useAppBase();
   const { signOut } = useAuth();
   const { authState, authenticated, user } = useRequireAuth("/sign-in", router);
-  const todosCollection = useMemo(() => appBase.db.collection("todos"), [appBase]);
+  const todosCollection = useMemo(
+    () => appBase.db.collection<TodoData>("todos", TodoSchema),
+    [appBase],
+  );
 
   const [todos, setTodos] = useState<Todo[]>([]);
   const [title, setTitle] = useState("");
@@ -44,7 +35,7 @@ export default function DashboardPage() {
     setError(null);
     try {
       const res = await todosCollection.list();
-      setTodos(res.items.map(mapTodo));
+      setTodos(res.items);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to load todos";
       setError(msg);
@@ -82,7 +73,7 @@ export default function DashboardPage() {
     setBusy(true);
     setError(null);
     try {
-      await todosCollection.update(todo.id, { done: !todo.done });
+      await todosCollection.update(todo.id, { done: !todo.data.done });
       await loadTodos();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update todo");
@@ -201,13 +192,13 @@ export default function DashboardPage() {
                 className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"
               >
                 <button
-                  className={`text-left ${todo.done ? "line-through opacity-60" : ""} transition hover:translate-x-0.5`}
+                  className={`text-left ${todo.data.done ? "line-through opacity-60" : ""} transition hover:translate-x-0.5`}
                   onClick={() => toggleTodo(todo)}
                   disabled={busy}
                 >
-                  <div className="font-medium">{todo.title}</div>
+                  <div className="font-medium">{todo.data.title}</div>
                   <div className="text-xs opacity-65">
-                    {new Date(todo.createdAt).toLocaleString()} | {todo.done ? "Done" : "Open"}
+                    {new Date(todo.data.createdAt).toLocaleString()} | {todo.data.done ? "Done" : "Open"}
                   </div>
                 </button>
                 <button
