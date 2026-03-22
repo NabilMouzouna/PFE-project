@@ -5,6 +5,11 @@ import { DbClient } from "./db";
 export interface AppBaseConfig {
   endpoint: string;
   apiKey: string;
+  /**
+   * When set (browser only), access token + user + expiry are saved to `localStorage`.
+   * Session refresh uses the HttpOnly `appbase_session` cookie (`credentials: 'include'` on `/auth/*`).
+   */
+  sessionStorageKey?: string;
 }
 
 export class AppBase {

@@ -157,10 +157,10 @@ sequenceDiagram
     A->>A: verify argon2id hash
     A->>DB: INSERT refresh_tokens (token, expires_at +7d)
     A->>A: sign JWT (15m, EdDSA Ed25519)
-    A-->>C: 200 {accessToken, refreshToken}
+    A-->>C: 200 {accessToken} + Set-Cookie appbase_session
 
     Note over C,A: accessToken expires after 15 minutes
-    C->>A: POST /auth/refresh {refreshToken}
+    C->>A: POST /auth/refresh (Cookie: appbase_session)
     A->>DB: SELECT refresh_tokens WHERE token = ? AND expires_at > now
     A->>A: sign new JWT (15m)
     A-->>C: 200 {accessToken}

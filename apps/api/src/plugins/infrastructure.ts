@@ -1,3 +1,4 @@
+import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import swagger from "@fastify/swagger";
@@ -6,7 +7,21 @@ import type { FastifyInstance } from "fastify";
 import type { AppEnv } from "../config/env";
 
 export async function registerInfrastructure(app: FastifyInstance, env: AppEnv) {
-  await app.register(cors, { origin: true });
+  await app.register(cookie);
+  await app.register(cors, {
+    credentials: true,
+    origin: (origin, cb) => {
+      if (!origin) {
+        cb(null, true);
+        return;
+      }
+      if (env.corsAllowedOrigins.includes(origin)) {
+        cb(null, true);
+        return;
+      }
+      cb(new Error("CORS origin not allowed"), false);
+    },
+  });
   await app.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
   await app.register(swagger, {
     openapi: {

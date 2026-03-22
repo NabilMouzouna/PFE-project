@@ -3,11 +3,12 @@ export interface User {
   email: string;
   createdAt: string;
   updatedAt: string;
+  /** From register `customIdentity` / user metadata; omitted or `{}` when none. */
+  customIdentity?: Record<string, string>;
 }
 
 export interface Session {
   accessToken: string;
-  refreshToken: string;
   expiresIn: number;
   user: User;
 }
@@ -15,6 +16,7 @@ export interface Session {
 export interface RegisterRequest {
   email: string;
   password: string;
+  customIdentity?: Record<string, string>;
 }
 
 export interface LoginRequest {

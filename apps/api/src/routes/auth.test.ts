@@ -3,6 +3,15 @@ import { describe, expect, it, beforeEach } from "vitest";
 import { buildApp } from "../app";
 import { loadEnv } from "../config/env";
 
+function sessionCookiePair(registerRes: { headers: Record<string, unknown> }): string {
+  const setCookieHeader = registerRes.headers["set-cookie"];
+  expect(setCookieHeader).toBeDefined();
+  const parts = (Array.isArray(setCookieHeader) ? setCookieHeader : [setCookieHeader]).map(String);
+  const sessionLine = parts.find((p) => typeof p === "string" && p.startsWith("appbase_session="));
+  expect(sessionLine).toBeDefined();
+  return sessionLine!.split(";")[0]!;
+}
+
 describe("auth routes", () => {
   const testEnv = loadEnv({
     ...process.env,
@@ -30,7 +39,6 @@ describe("auth routes", () => {
     expect(body.success).toBe(true);
     expect(body.data).toMatchObject({
       accessToken: expect.any(String),
-      refreshToken: expect.any(String),
       expiresIn: 900,
       user: {
         id: expect.any(String),
@@ -38,6 +46,25 @@ describe("auth routes", () => {
         createdAt: expect.any(String),
         updatedAt: expect.any(String),
       },
+    });
+    expect(res.headers["set-cookie"]).toBeDefined();
+  });
+
+  it("POST /auth/register - returns customIdentity when provided", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/auth/register",
+      payload: {
+        email: "custom-id@example.com",
+        password: "SecurePassword123!",
+        customIdentity: { displayName: "Test", company: "Acme" },
+      },
+    });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.json().data.user.customIdentity).toEqual({
+      displayName: "Test",
+      company: "Acme",
     });
   });
 
@@ -105,7 +132,6 @@ describe("auth routes", () => {
     expect(body.success).toBe(true);
     expect(body.data).toMatchObject({
       accessToken: expect.any(String),
-      refreshToken: expect.any(String),
       expiresIn: 900,
       user: { email: "login@example.com" },
     });
@@ -124,18 +150,18 @@ describe("auth routes", () => {
     expect(body.error.code).toBe("INVALID_CREDENTIALS");
   });
 
-  it("POST /auth/refresh - success", async () => {
+  it("POST /auth/refresh - success with session cookie", async () => {
     const registerRes = await app.inject({
       method: "POST",
       url: "/auth/register",
       payload: { email: "refresh@example.com", password: "SecurePassword123!" },
     });
-    const { refreshToken } = registerRes.json().data;
+    const cookiePair = sessionCookiePair(registerRes);
 
     const res = await app.inject({
       method: "POST",
       url: "/auth/refresh",
-      headers: { Authorization: `Bearer ${refreshToken}` },
+      headers: { cookie: cookiePair },
     });
 
     expect(res.statusCode).toBe(200);
@@ -147,44 +173,60 @@ describe("auth routes", () => {
     });
   });
 
-  it("POST /auth/refresh - invalid/missing token", async () => {
+  it("POST /auth/refresh - 401 when session cookie missing", async () => {
     const res = await app.inject({
       method: "POST",
       url: "/auth/refresh",
-      headers: { Authorization: "Bearer invalid-token" },
     });
-
     expect(res.statusCode).toBe(401);
-    const body = res.json();
-    expect(body.success).toBe(false);
-    expect(["INVALID_TOKEN", "INVALID_API_KEY"]).toContain(body.error.code);
   });
 
-  it("POST /auth/logout - success", async () => {
+  it("POST /auth/refresh - 401 when Authorization Bearer present but no cookie", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/auth/refresh",
+      headers: { Authorization: "Bearer some-token" },
+    });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("POST /auth/refresh - 401 for invalid session cookie", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/auth/refresh",
+      headers: { cookie: "appbase_session=not-a-valid-session" },
+    });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("POST /auth/logout - success with session cookie and clears cookie", async () => {
     const registerRes = await app.inject({
       method: "POST",
       url: "/auth/register",
       payload: { email: "logout@example.com", password: "SecurePassword123!" },
     });
-    const { refreshToken } = registerRes.json().data;
+    const cookiePair = sessionCookiePair(registerRes);
 
     const res = await app.inject({
       method: "POST",
       url: "/auth/logout",
-      headers: { Authorization: `Bearer ${refreshToken}` },
+      headers: { cookie: cookiePair },
     });
 
     expect(res.statusCode).toBe(200);
-    const body = res.json();
-    expect(body.success).toBe(true);
-    expect(body.data.loggedOut).toBe(true);
+    expect(res.json().data.loggedOut).toBe(true);
+
+    const cleared = res.headers["set-cookie"];
+    expect(cleared).toBeDefined();
+    const clearedJoined = Array.isArray(cleared) ? cleared.join("\n") : String(cleared);
+    expect(clearedJoined.toLowerCase()).toContain("appbase_session=");
+    expect(clearedJoined.toLowerCase()).toMatch(/max-age=0|expires=/);
   });
 
-  it("POST /auth/logout - idempotent when no session", async () => {
+  it("POST /auth/logout - idempotent when no session cookie", async () => {
     const res = await app.inject({
       method: "POST",
       url: "/auth/logout",
-      headers: { Authorization: "Bearer invalid-or-expired-token" },
     });
 
     expect(res.statusCode).toBe(200);
