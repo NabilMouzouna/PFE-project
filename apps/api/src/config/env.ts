@@ -9,6 +9,8 @@ const envSchema = z.object({
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
     .default("info"),
   BASE_URL: z.string().url().optional(),
+  /** Comma-separated allowed origins (e.g. `http://localhost:3001`). Use `*` to allow any origin. */
+  CORS_ORIGINS: z.string().optional(),
   AUTH_SECRET: z
     .string()
     .min(32, "AUTH_SECRET must be at least 32 characters")
@@ -17,10 +19,35 @@ const envSchema = z.object({
 
 type ParsedEnv = z.output<typeof envSchema>;
 
-export type AppEnv = Omit<ParsedEnv, "BASE_URL" | "AUTH_SECRET"> & {
+export type AppEnv = Omit<ParsedEnv, "BASE_URL" | "AUTH_SECRET" | "CORS_ORIGINS"> & {
   BASE_URL: string;
   AUTH_SECRET: string;
+  corsAllowedOrigins: string[];
 };
+
+function buildCorsAllowedOrigins(corsOriginsEnv: string | undefined, baseUrl: string): string[] {
+  const fromEnv =
+    corsOriginsEnv
+      ?.split(",")
+      .map((s) => s.trim())
+      .filter(Boolean) ?? [];
+  let baseOrigin: string;
+  try {
+    baseOrigin = new URL(baseUrl).origin;
+  } catch {
+    baseOrigin = "http://localhost:3000";
+  }
+  const defaults = [
+    baseOrigin,
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://[::1]:3000",
+    "http://[::1]:3001",
+  ];
+  return [...new Set([...fromEnv, ...defaults])];
+}
 
 export function loadEnv(source: NodeJS.ProcessEnv): AppEnv {
   const parsed = envSchema.parse(source);
@@ -33,9 +60,13 @@ export function loadEnv(source: NodeJS.ProcessEnv): AppEnv {
     );
   }
 
+  const baseUrl = parsed.BASE_URL ?? `http://${publicHost}:${parsed.PORT}`;
+  const { CORS_ORIGINS, ...rest } = parsed;
+
   return {
-    ...parsed,
-    BASE_URL: parsed.BASE_URL ?? `http://${publicHost}:${parsed.PORT}`,
+    ...rest,
+    BASE_URL: baseUrl,
     AUTH_SECRET: authSecret ?? "dev-secret-min-32-chars-required-for-auth",
+    corsAllowedOrigins: buildCorsAllowedOrigins(CORS_ORIGINS, baseUrl),
   };
 }

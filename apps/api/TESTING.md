@@ -25,9 +25,9 @@
 2. Open `apps/api/api.http`.
 3. Click **Send Request** above any `###` block to run that request.
 
-### Using tokens
+### Session cookie
 
-After **Login**, copy the `refreshToken` from the response. For **Refresh** and **Logout**, replace `YOUR_REFRESH_TOKEN_HERE` in the `Authorization` header with that token.
+After **Register** or **Login**, copy `appbase_session=...` from the response **`Set-Cookie`** header into the `@sessionCookie` variable in `api.http`, then run **Refresh** / **Logout**.
 
 ## Option 2: JetBrains HTTP Client
 
@@ -36,33 +36,31 @@ After **Login**, copy the `refreshToken` from the response. For **Refresh** and 
 
 ## Option 3: cURL
 
-Replace `YOUR_API_KEY` with the key from `create-dev-api-key.ts`:
+Replace `YOUR_API_KEY` with the key from `create-dev-api-key.ts`. Use a cookie jar so **Refresh** / **Logout** reuse the session from **Login**:
 
 ```bash
 # Health (no API key)
 curl http://localhost:3000/health
 
-# Register
-curl -X POST http://localhost:3000/auth/register \
+# Register (saves cookies to jar)
+curl -c cookies.txt -X POST http://localhost:3000/auth/register \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{"email":"test@example.com","password":"SecurePassword123!"}'
 
-# Login
-curl -X POST http://localhost:3000/auth/login \
+# Login (updates jar)
+curl -c cookies.txt -b cookies.txt -X POST http://localhost:3000/auth/login \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_API_KEY" \
   -d '{"email":"test@example.com","password":"SecurePassword123!"}'
 
-# Refresh (replace TOKEN with refreshToken from login)
-curl -X POST http://localhost:3000/auth/refresh \
-  -H "x-api-key: YOUR_API_KEY" \
-  -H "Authorization: Bearer TOKEN"
+# Refresh (sends session cookie from jar)
+curl -b cookies.txt -X POST http://localhost:3000/auth/refresh \
+  -H "x-api-key: YOUR_API_KEY"
 
 # Logout
-curl -X POST http://localhost:3000/auth/logout \
-  -H "x-api-key: YOUR_API_KEY" \
-  -H "Authorization: Bearer TOKEN"
+curl -b cookies.txt -X POST http://localhost:3000/auth/logout \
+  -H "x-api-key: YOUR_API_KEY"
 ```
 
 ## Option 4: Swagger UI
@@ -74,10 +72,10 @@ curl -X POST http://localhost:3000/auth/logout \
 ## Test flow
 
 1. **Health** – Check the API is running.
-2. **Register** – Create a user; you get `accessToken`, `refreshToken`, and `user`.
-3. **Login** – Sign in with the same credentials.
-4. **Refresh** – Send `refreshToken` in `Authorization: Bearer <token>` to get a new `accessToken`.
-5. **Logout** – Send `refreshToken` to invalidate the session (optional; 200 even without a token).
+2. **Register** – Create a user; you get `accessToken`, `expiresIn`, `user`, and a **`Set-Cookie`** for `appbase_session`.
+3. **Login** – Same shape; updates the session cookie.
+4. **Refresh** – `POST /auth/refresh` with the **session cookie** → new `accessToken`.
+5. **Logout** – `POST /auth/logout` with the cookie (optional); clears cookie server-side. **200** even with no cookie.
 
 ## Automated tests
 

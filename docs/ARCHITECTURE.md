@@ -157,10 +157,10 @@ sequenceDiagram
     A->>A: verify argon2id hash
     A->>DB: INSERT refresh_tokens (token, expires_at +7d)
     A->>A: sign JWT (15m, EdDSA Ed25519)
-    A-->>C: 200 {accessToken, refreshToken}
+    A-->>C: 200 {accessToken} + Set-Cookie appbase_session
 
     Note over C,A: accessToken expires after 15 minutes
-    C->>A: POST /auth/refresh {refreshToken}
+    C->>A: POST /auth/refresh (Cookie: appbase_session)
     A->>DB: SELECT refresh_tokens WHERE token = ? AND expires_at > now
     A->>A: sign new JWT (15m)
     A-->>C: 200 {accessToken}
@@ -463,3 +463,4 @@ Architecture decisions that shaped this document:
 | [ADR-001 — API Framework Selection](./adr/ADR-001-api-framework-selection.md) | Fastify selected over Express, Hono, Elysia | Plugin-per-service architecture in §2; `onRequest` hook for API key validation in §3.2 |
 | [ADR-002 — ORM and Migration Strategy](./adr/ADR-002-orm-and-migration-strategy.md) | Drizzle ORM + `better-sqlite3` + `drizzle-kit` | Schema tables in §4 sourced directly from `packages/db/src/schema/`; `createDb(path)` factory enables per-app SQLite in M2+ |
 | [ADR-003 — Auth Implementation](./adr/ADR-003-auth-implementation.md) | 3-token model (refresh token + JWT + API key); argon2id hashing; EdDSA signing | Auth flow in §3.1; `refresh_tokens` and `api_keys` schema in §4; JWT-on-hot-path pattern in §3.2 |
+| [ADR-004 — Database API Service](./adr/ADR-004-database-api-service.md) | Fastify `/db/*` plugin; `records` document model; owner isolation; in-process SSE | §3.4 sequence; `records` in §4; `/db/*` routes in §5; complements API-SPEC §7 |

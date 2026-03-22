@@ -7,6 +7,8 @@ import {
   ACCESS_TOKEN_EXPIRY_SECONDS,
   AUTH_INTERNAL_PATHS,
   BETTER_AUTH_HANDLER_MOUNT,
+  SESSION_COOKIE_MAX_AGE_SECONDS,
+  SESSION_COOKIE_NAME,
 } from "../constants";
 
 const registerBodySchema = z.object({
@@ -41,6 +43,7 @@ const userSchema = {
     email: { type: "string", format: "email" },
     createdAt: { type: "string", format: "date-time" },
     updatedAt: { type: "string", format: "date-time" },
+    customIdentity: { type: "object", additionalProperties: { type: "string" } },
   },
   required: ["id", "email", "createdAt", "updatedAt"],
 } as const;
@@ -48,10 +51,9 @@ const userSchema = {
 const registerSchema = {
   tags: ["auth"],
   summary: "Register",
-  description: "Create a new user account and return access/refresh tokens.",
+  description: "Create a new user account; sets session cookie and returns access JWT + user.",
   body: {
     type: "object",
-    required: ["email", "password"],
     properties: {
       email: { type: "string", format: "email" },
       password: { type: "string", minLength: 1 },
@@ -67,11 +69,10 @@ const registerSchema = {
           type: "object",
           properties: {
             accessToken: { type: "string" },
-            refreshToken: { type: "string" },
             expiresIn: { type: "number" },
             user: userSchema,
           },
-          required: ["accessToken", "refreshToken", "expiresIn", "user"],
+          required: ["accessToken", "expiresIn", "user"],
         },
       },
       required: ["success", "data"],
@@ -85,7 +86,7 @@ const registerSchema = {
 const loginSchema = {
   tags: ["auth"],
   summary: "Login",
-  description: "Sign in with email and password. Returns access and refresh tokens.",
+  description: "Sign in with email and password; sets session cookie and returns access JWT + user.",
   body: {
     type: "object",
     required: ["email", "password"],
@@ -103,11 +104,10 @@ const loginSchema = {
           type: "object",
           properties: {
             accessToken: { type: "string" },
-            refreshToken: { type: "string" },
             expiresIn: { type: "number" },
             user: userSchema,
           },
-          required: ["accessToken", "refreshToken", "expiresIn", "user"],
+          required: ["accessToken", "expiresIn", "user"],
         },
       },
       required: ["success", "data"],
@@ -121,8 +121,9 @@ const loginSchema = {
 const refreshSchema = {
   tags: ["auth"],
   summary: "Refresh token",
-  description: "Exchange a refresh token for a new access token. Send the refresh token in the Authorization header.",
-  security: [{ bearerAuth: [] }],
+  description:
+    "Exchange session cookie for a new access JWT. Requires HttpOnly `appbase_session` from login/register.",
+  security: [],
   response: {
     200: {
       type: "object",
@@ -146,7 +147,8 @@ const refreshSchema = {
 const logoutSchema = {
   tags: ["auth"],
   summary: "Logout",
-  description: "Invalidate the current session. Optionally send refresh token in Authorization header.",
+  description: "Invalidate the current session and clear the `appbase_session` cookie.",
+  security: [],
   response: {
     200: {
       type: "object",
@@ -171,13 +173,56 @@ function apiError(code: string, message: string) {
   return { success: false as const, error: { code, message } };
 }
 
-function formatUser(user: { id: string; email: string; createdAt: Date; updatedAt: Date }) {
+function parseCustomIdentity(metadata: string | null | undefined): Record<string, string> | undefined {
+  if (metadata == null || metadata === "" || metadata === "{}") return undefined;
+  try {
+    const parsed = JSON.parse(metadata) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return undefined;
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(parsed)) {
+      if (typeof v === "string") out[k] = v;
+    }
+    return Object.keys(out).length > 0 ? out : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function formatUser(user: {
+  id: string;
+  email: string;
+  createdAt: Date;
+  updatedAt: Date;
+  metadata?: string | null;
+}) {
+  const customIdentity = parseCustomIdentity(user.metadata);
   return {
     id: user.id,
     email: user.email,
     createdAt: user.createdAt instanceof Date ? user.createdAt.toISOString() : user.createdAt,
     updatedAt: user.updatedAt instanceof Date ? user.updatedAt.toISOString() : user.updatedAt,
+    ...(customIdentity != null ? { customIdentity } : {}),
   };
+}
+
+function setSessionCookie(reply: FastifyReply, token: string, nodeEnv: string): void {
+  reply.setCookie(SESSION_COOKIE_NAME, token, {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    maxAge: SESSION_COOKIE_MAX_AGE_SECONDS,
+    secure: nodeEnv === "production",
+  });
+}
+
+function clearSessionCookie(reply: FastifyReply): void {
+  reply.clearCookie(SESSION_COOKIE_NAME, { path: "/" });
+}
+
+function getSessionTokenFromCookie(request: FastifyRequest): string | null {
+  const fromCookie = request.cookies[SESSION_COOKIE_NAME];
+  if (fromCookie && fromCookie.length > 0) return fromCookie;
+  return null;
 }
 
 async function getJwtFromSession(
@@ -199,6 +244,7 @@ async function getJwtFromSession(
 export async function registerAuthRoutes(app: FastifyInstance) {
   const { auth } = app;
   const baseUrl = app.config.BASE_URL;
+  const nodeEnv = app.config.NODE_ENV;
 
   // Mount better-auth internal routes
   app.all(BETTER_AUTH_HANDLER_MOUNT, async (request: FastifyRequest, reply: FastifyReply) => {
@@ -258,7 +304,10 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       return reply.status(400).send(apiError("VALIDATION_ERROR", msg || "Invalid request"));
     }
 
-    let session: { token: string; user: { id: string; email: string; createdAt: Date; updatedAt: Date } };
+    let session: {
+      token: string;
+      user: { id: string; email: string; createdAt: Date; updatedAt: Date; metadata?: string | null };
+    };
     try {
       session = await auth.api.signInEmail({
         body: { email, password },
@@ -284,10 +333,10 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       createdAt: now,
     });
 
+    setSessionCookie(reply, session.token, nodeEnv);
     return reply.status(201).send(
       apiSuccess({
         accessToken: jwt,
-        refreshToken: session.token,
         expiresIn: ACCESS_TOKEN_EXPIRY_SECONDS,
         user: formatUser(session.user),
       }),
@@ -303,7 +352,10 @@ export async function registerAuthRoutes(app: FastifyInstance) {
     }
     const { email, password } = parsed.data;
 
-    let session: { token: string; user: { id: string; email: string; createdAt: Date; updatedAt: Date } };
+    let session: {
+      token: string;
+      user: { id: string; email: string; createdAt: Date; updatedAt: Date; metadata?: string | null };
+    };
     try {
       session = await auth.api.signInEmail({
         body: { email, password },
@@ -329,10 +381,10 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       createdAt: now,
     });
 
+    setSessionCookie(reply, session.token, nodeEnv);
     return reply.send(
       apiSuccess({
         accessToken: jwt,
-        refreshToken: session.token,
         expiresIn: ACCESS_TOKEN_EXPIRY_SECONDS,
         user: formatUser(session.user),
       }),
@@ -341,8 +393,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
 
   // POST /auth/refresh
   app.post("/auth/refresh", { schema: refreshSchema }, async (request, reply) => {
-    const authHeader = request.headers.authorization;
-    const sessionToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    const sessionToken = getSessionTokenFromCookie(request);
     if (!sessionToken) {
       return reply.status(401).send(apiError("INVALID_TOKEN", "The provided token is invalid or expired."));
     }
@@ -362,18 +413,17 @@ export async function registerAuthRoutes(app: FastifyInstance) {
 
   // POST /auth/logout
   app.post("/auth/logout", { schema: logoutSchema }, async (request, reply) => {
-    const authHeader = request.headers.authorization;
-    const sessionToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-    if (!sessionToken) {
-      return reply.send(apiSuccess({ loggedOut: true }));
-    }
+    const sessionToken = getSessionTokenFromCookie(request);
+    clearSessionCookie(reply);
 
-    const url = `${baseUrl}${AUTH_INTERNAL_PATHS.signOut}`;
-    const req = new Request(url, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${sessionToken}` },
-    });
-    await auth.handler(req);
+    if (sessionToken) {
+      const url = `${baseUrl}${AUTH_INTERNAL_PATHS.signOut}`;
+      const req = new Request(url, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${sessionToken}` },
+      });
+      await auth.handler(req);
+    }
 
     return reply.send(apiSuccess({ loggedOut: true }));
   });

@@ -1,0 +1,121 @@
+### AppBase Database API – Manual test requests
+### Use with VS Code REST Client (humao.rest-client) or JetBrains HTTP Client
+###
+### Workflow:
+### 1. Register/Login in auth.http → copy accessToken
+### 2. Set @accessToken below
+### 3. Run "Create – success" → copy "id" from response.data
+### 4. Set @recordId below with that id
+### 5. Run Get, Put, Delete (they use @recordId)
+
+@baseUrl = http://localhost:8000
+@apiKey = hs_live_mnlIKCBxPqvSGZLcDsNqAstnMihqTQwVAcwJESDFLxpgpBuxrvWzQBkpSjJkQVwl
+@accessToken = eyJhbGciOiJFZERTQSIsImtpZCI6IkM1aktPd1VrUGZZOGpPQWJnRWFLQVo5eGhDRGNCNWw1In0.eyJpYXQiOjE3NzQxOTc5OTUsInN1YiI6IjRVQm52M0gxVDA4b01ybXFmMXlFSWd4RWJ1TDBzbWFiIiwiZW1haWwiOiJtYW51YWwtdGVzdEBleGFtcGxlLmNvbSIsImFwcElkIjpudWxsLCJtZXRhZGF0YSI6Int9IiwiZXhwIjoxNzc0MTk4ODk1LCJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwMDAiLCJhdWQiOiJodHRwOi8vbG9jYWxob3N0OjgwMDAifQ.sHnOaiFOxUZ0Chw4CAFNI1Q1uPhRUTyPZet7axgKlWABtwFVYLFytmUWQ7VmHr7sUAa06iAgvW1oPiYfceCwBQ
+@recordId = nUcunscbx7OZRXZGS56G_
+
+###############################################################################
+# 1. Create record (POST)
+###############################################################################
+
+### Create – success
+POST {{baseUrl}}/db/collections/todos
+Content-Type: application/json
+x-api-key: {{apiKey}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "data": {
+    "title": "Buy groceries",
+    "done": false,
+    "createdAt": "2026-03-19T12:00:00.000Z"
+  }
+}
+
+### Create – validation error (missing data)
+POST {{baseUrl}}/db/collections/todos
+Content-Type: application/json
+x-api-key: {{apiKey}}
+Authorization: Bearer {{accessToken}}
+
+{}
+
+### Create – validation error (invalid collection name)
+POST {{baseUrl}}/db/collections/invalid-name!
+Content-Type: application/json
+x-api-key: {{apiKey}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "data": { "title": "Test" }
+}
+
+###############################################################################
+# 2. List records (GET)
+###############################################################################
+
+### List – all
+GET {{baseUrl}}/db/collections/todos
+x-api-key: {{apiKey}}
+Authorization: Bearer {{accessToken}}
+
+### List – with limit and offset
+GET {{baseUrl}}/db/collections/todos?limit=10&offset=0
+x-api-key: {{apiKey}}
+Authorization: Bearer {{accessToken}}
+
+### List – with filter (equality on data fields)
+GET {{baseUrl}}/db/collections/todos?filter=%7B%22done%22%3Afalse%7D
+x-api-key: {{apiKey}}
+Authorization: Bearer {{accessToken}}
+
+### List – 401 without token
+GET {{baseUrl}}/db/collections/todos
+x-api-key: {{apiKey}}
+
+###############################################################################
+# 3. Get one record (GET by id)
+###############################################################################
+
+### Get – success (uses @recordId from create response)
+GET {{baseUrl}}/db/collections/todos/{{recordId}}
+x-api-key: {{apiKey}}
+Authorization: Bearer {{accessToken}}
+
+### Get – 404 for non-existent
+GET {{baseUrl}}/db/collections/todos/nonexistent_id_123
+x-api-key: {{apiKey}}
+Authorization: Bearer {{accessToken}}
+
+###############################################################################
+# 4. Update record (PUT)
+###############################################################################
+
+### Update – success (uses @recordId)
+PUT {{baseUrl}}/db/collections/todos/{{recordId}}
+Content-Type: application/json
+x-api-key: {{apiKey}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "data": {
+    "title": "Buy groceries (updated)",
+    "done": true,
+    "createdAt": "2026-03-19T12:00:00.000Z"
+  }
+}
+
+###############################################################################
+# 5. Delete record (DELETE)
+###############################################################################
+
+### Delete – success (uses @recordId)
+DELETE {{baseUrl}}/db/collections/todos/{{recordId}}
+x-api-key: {{apiKey}}
+Authorization: Bearer {{accessToken}}
+
+###############################################################################
+# 6. SSE Subscribe (real-time)
+###############################################################################
+### Open a stream. EventSource in browser or use a tool that supports SSE.
+### Headers: x-api-key, Authorization: Bearer <token>
+### GET {{baseUrl}}/db/collections/todos/subscribe
