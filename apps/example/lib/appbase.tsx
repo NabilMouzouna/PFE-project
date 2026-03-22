@@ -12,6 +12,7 @@ export function AppBaseProvider({ children }: { children: React.ReactNode }) {
       endpoint: env.endpoint,
       apiKey: env.apiKey,
       sessionStorageKey: "appbase_example_session",
+      dbCache: true,
     });
   }, []);
 

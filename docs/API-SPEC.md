@@ -548,4 +548,5 @@ data: {"type":"created","collection":"passwords","record":{"id":"rec_123","site"
 - This file defines the public AppBase contract.
 - `docs/ARCHITECTURE.md` explains how that contract is hosted and routed.
 - `better-auth` is an internal implementation choice; the public contract is cookie session + JWT access as defined here and in ADR-003.
+- **Database (`/db/*`):** implementation decisions (owner scoping, M1 filter semantics, SSE in-process bus) are recorded in `docs/adr/ADR-004-database-api-service.md`.
 - Dashboard authentication is intentionally separate from the public API contract.

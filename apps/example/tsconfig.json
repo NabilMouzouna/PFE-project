@@ -19,7 +19,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@designer/*": ["../../.cursor/skills/designer/*"]
     }
   },
   "include": [

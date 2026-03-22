@@ -10,12 +10,14 @@ export async function registerInfrastructure(app: FastifyInstance, env: AppEnv) 
   await app.register(cookie);
   await app.register(cors, {
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-api-key"],
     origin: (origin, cb) => {
       if (!origin) {
         cb(null, true);
         return;
       }
-      if (env.corsAllowedOrigins.includes(origin)) {
+      if (env.corsAllowedOrigins.includes("*") || env.corsAllowedOrigins.includes(origin)) {
         cb(null, true);
         return;
       }

@@ -54,7 +54,6 @@ const registerSchema = {
   description: "Create a new user account; sets session cookie and returns access JWT + user.",
   body: {
     type: "object",
-    required: ["email", "password"],
     properties: {
       email: { type: "string", format: "email" },
       password: { type: "string", minLength: 1 },
