@@ -5,6 +5,7 @@ import {
   AUTH_INTERNAL_PATHS,
   DOCS_PATH_PREFIX,
   HEALTH_PATH,
+  TEST_EXCLUDED_API_KEY_PATHS,
   TEST_EXCLUDED_AUTH_POST_PATHS,
 } from "../constants";
 
@@ -15,6 +16,8 @@ function isExcluded(method: string, path: string, nodeEnv: string): boolean {
   if (nodeEnv === "test" && method === "POST" && TEST_EXCLUDED_AUTH_POST_PATHS.includes(p))
     return true;
   if (nodeEnv === "test" && p.startsWith(AUTH_INTERNAL_PATHS.apiPrefix)) return true;
+  if (nodeEnv === "test" && TEST_EXCLUDED_API_KEY_PATHS.some((prefix) => p.startsWith(prefix)))
+    return true;
   return false;
 }
 

@@ -16,6 +16,7 @@
   "dependencies": {
     "@appbase/db": "workspace:*",
     "@appbase/types": "workspace:*",
+    "drizzle-orm": "^0.45.1",
     "@better-auth/api-key": "^1.5.5",
     "@fastify/cookie": "^11.0.2",
     "@fastify/cors": "^11.2.0",

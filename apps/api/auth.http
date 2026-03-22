@@ -4,7 +4,7 @@
 ### Run requests in order: 1. Health → 2. Register → 3. Login → 4. Refresh → 5. Logout
 ### After Register/Login, copy `appbase_session=...` from the `Set-Cookie` response header into @sessionCookie below.
 
-@baseUrl = http://localhost:3000
+@baseUrl = http://localhost:8000
 @apiKey = hs_live_mnlIKCBxPqvSGZLcDsNqAstnMihqTQwVAcwJESDFLxpgpBuxrvWzQBkpSjJkQVwl
 @sessionCookie = appbase_session=PASTE_VALUE_FROM_SET_COOKIE
 
@@ -25,7 +25,7 @@ Content-Type: application/json
 x-api-key: {{apiKey}}
 
 {
-  "email": "newUser@example.com",
+  "email": "dbTester@example.com",
   "password": "SecurePassword123!"
 }
 
