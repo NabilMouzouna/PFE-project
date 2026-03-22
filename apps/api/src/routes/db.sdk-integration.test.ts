@@ -16,6 +16,7 @@ const TodoSchema = z.object({
 
 type TodoData = z.infer<typeof TodoSchema>;
 
+
 describe("SDK db integration", () => {
   const port = 38500 + (Math.floor(Math.random() * 1000) % 500);
   const baseUrl = `http://127.0.0.1:${port}`;
@@ -29,7 +30,7 @@ describe("SDK db integration", () => {
   });
 
   let app: Awaited<ReturnType<typeof buildApp>>;
-  let appbase: InstanceType<typeof AppBase>;
+  let appbase: AppBase;
 
   beforeAll(async () => {
     app = await buildApp({ env: testEnv });
@@ -59,7 +60,7 @@ describe("SDK db integration", () => {
   });
 
   it("create, list, get, update, delete via SDK", async () => {
-    const todos = appbase.db.collection<TodoData>("todos", TodoSchema);
+    const todos = appbase.db.collection("todos", TodoSchema as unknown as Parameters<AppBase["db"]["collection"]>[1]);
 
     const created = await todos.create({
       title: "SDK integration test",
@@ -97,7 +98,7 @@ describe("SDK db integration", () => {
   });
 
   it("list with filter and pagination", async () => {
-    const todos = appbase.db.collection<TodoData>("todos", TodoSchema);
+    const todos = appbase.db.collection("todos", TodoSchema as unknown as Parameters<AppBase["db"]["collection"]>[1]);
 
     await todos.create({
       title: "Open 1",
@@ -123,11 +124,11 @@ describe("SDK db integration", () => {
 
     expect(openItems.length).toBe(2);
     expect(total).toBe(2);
-    expect(openItems.every((i) => !i.data.done)).toBe(true);
+    expect(openItems.every((i) => !(i.data as TodoData).done)).toBe(true);
   });
 
   it("subscribe receives events after create", async () => {
-    const todos = appbase.db.collection<TodoData>("todos", TodoSchema);
+    const todos = appbase.db.collection("todos", TodoSchema as unknown as Parameters<AppBase["db"]["collection"]>[1]);
     const events: { type: string; record?: { id: string } }[] = [];
 
     const unsub = todos.subscribe((e) => {
