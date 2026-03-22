@@ -12,6 +12,12 @@ export const ACCESS_TOKEN_EXPIRY_STRING = "15m" as const;
 /** @better-auth/api-key default key prefix. */
 export const API_KEY_PREFIX = "hs_live_" as const;
 
+/** HttpOnly session cookie (better-auth session token) for browser refresh/logout. */
+export const SESSION_COOKIE_NAME = "appbase_session" as const;
+
+/** Max-Age for session cookie — align with better-auth session duration (7d). */
+export const SESSION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
+
 /** better-auth internal routes relative to `BASE_URL`. */
 export const AUTH_INTERNAL_PATHS = {
   token: "/api/auth/token",

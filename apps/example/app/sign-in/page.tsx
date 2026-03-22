@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAppBase } from "@/lib/appbase";
+import { useAuth } from "@/lib/appbase";
 
 type LogItem = { at: string; message: string };
 
@@ -13,8 +13,7 @@ function nowTime() {
 
 export default function SignInPage() {
   const router = useRouter();
-  const appBase = useAppBase();
-  const { signIn, getSession } = appBase.auth;
+  const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -32,7 +31,7 @@ export default function SignInPage() {
     try {
       const res = await signIn({ email, password });
       push(`Sign in success: ${res.user.email}`);
-      push(getSession() ? "Session active" : "Session missing");
+      push("Session active");
       router.push("/dashboard");
     } catch (error) {
       push(`Sign in failed: ${error instanceof Error ? error.message : String(error)}`);

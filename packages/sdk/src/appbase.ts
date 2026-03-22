@@ -6,8 +6,8 @@ export interface AppBaseConfig {
   endpoint: string;
   apiKey: string;
   /**
-   * When set (browser only), the auth session is saved to `localStorage` under this key
-   * so it survives full page reloads. Sign out clears it.
+   * When set (browser only), access token + user + expiry are saved to `localStorage`.
+   * Session refresh uses the HttpOnly `appbase_session` cookie (`credentials: 'include'` on `/auth/*`).
    */
   sessionStorageKey?: string;
 }

@@ -23,10 +23,7 @@ The SDK contract is defined in the README:
 
 This establishes that the **access token (JWT)** is delivered and attached via **headers** for storage/db/SSE, and that **silent refresh** is a first-class SDK responsibility.
 
-**Amendment (2026-03-20):** The **session / refresh** credential is **not** required to live in `localStorage` for browser apps. AppBase supports two **session transport profiles** (see amendment section below):
-
-1. **Bearer profile** — session token in JSON + `Authorization: Bearer` on refresh/logout (Node, automation, non-browser SDKs).
-2. **Browser cookie profile** — server sets a **session cookie** on login/register; refresh/logout use `credentials: 'include'` without putting the refresh token in `localStorage`. This avoids duplicating highly sensitive refresh material in JS-accessible storage when combined with hardening flags.
+**Amendment (2026-03-20):** The **session / refresh** credential is carried in an **HttpOnly session cookie** (`appbase_session`) set on login/register. Refresh/logout use that cookie (`credentials: 'include'` in browsers). The access JWT may still be held in memory or `localStorage` for attaching to `/storage/*` and `/db/*` — but the **session secret is not** returned in JSON for clients to persist.
 
 **LAN / HTTP vs HTTPS:** M1 often runs on `http://` (LAN, VPS without TLS yet). Cookies **must not** use the `Secure` flag until the deployment serves HTTPS; otherwise browsers will not send the cookie. **`HttpOnly` does not require HTTPS** — it only blocks JavaScript from reading the cookie. For early LAN deployments we allow a **non-`HttpOnly`** session cookie if needed for interoperability; when HTTPS is enabled, implementations **should** set **`HttpOnly`** and **`Secure`** and tighten `SameSite` (see amendment).
 
@@ -44,24 +41,24 @@ The auth system must work entirely offline — no external identity provider, no
 6. **Password hashing:** argon2id (configured via better-auth)
 7. **API key format:** `hs_live_` prefix via `@better-auth/api-key` plugin
 8. **JWT signing algorithm:** EdDSA (Ed25519) — asymmetric, JWKS-based verification
-9. **Session transport profiles:** **Bearer** (session in header/body) and **Browser cookie** (session in `Set-Cookie`). See **Amendment (2026-03-20)**. Access JWT remains header-based for `/storage/*` and `/db/*`. Do not persist refresh + access together in `localStorage` as the default browser strategy when cookie profile is used.
+9. **Session transport:** **Cookie only** — session in `Set-Cookie`; access JWT remains `Authorization: Bearer` on `/storage/*` and `/db/*`. Do not put the session token in `localStorage`.
 
 ---
 
-## Amendment (2026-03-20) — Browser cookie profile for session (refresh)
+## Amendment (2026-03-20) — Session cookie for refresh
 
 ### Motivation
 
-- Storing **both** access and refresh tokens in `localStorage` gives **good reload UX** but duplicates XSS exposure for the **refresh** credential.
-- Browser **same-origin** or **CORS-with-credentials** flows can carry the session in a **cookie**, so the SDK does not need a long-lived refresh string in `localStorage`.
-- **LAN / HTTP:** many instances use plain HTTP until TLS is deployed. **`Secure` cookies require HTTPS** — so M1 cookie defaults must work **without** `Secure`. **`HttpOnly` is independent of HTTPS** and should be preferred as soon as the stack can set it reliably; until then, a **non-`HttpOnly`** cookie is an allowed **compatibility** mode with documented XSS risk.
+- Storing **both** access and session tokens in `localStorage` duplicates XSS exposure for the **session** credential.
+- **Cookie + `credentials: 'include'`** carries refresh without exposing the session string to JS when **`HttpOnly`** is set.
+- **LAN / HTTP:** **`Secure` cookies require HTTPS** — M1 defaults work **without** `Secure`. **`HttpOnly` is independent of HTTPS** and should be preferred; a **non-`HttpOnly`** cookie is an allowed **compatibility** mode with documented XSS risk.
 
-### Two profiles (normative for product design)
+### Normative shape
 
-| Profile | Typical client | Session (refresh) transport | Access JWT |
-|--------|----------------|-----------------------------|------------|
-| **Bearer** | Node, scripts, mobile, some SPAs | Returned in JSON + `Authorization: Bearer` on `/auth/refresh` and `/auth/logout` | `Authorization: Bearer` on `/storage/*`, `/db/*` |
-| **Browser cookie** | First-party browser app | HTTP cookie (name e.g. `appbase_session`, exact value implementation-defined) set on `/auth/register` and `/auth/login`; sent automatically on `/auth/refresh`, `/auth/logout` when `credentials: 'include'` | Still `Authorization: Bearer` (may be held in memory or short-lived storage — product choice); **not** the session cookie |
+| Piece | Transport |
+|--------|-----------|
+| Session (refresh) | HTTP cookie `appbase_session` on `/auth/register`, `/auth/login`; sent on `/auth/refresh`, `/auth/logout` |
+| Access JWT | `Authorization: Bearer` on `/storage/*`, `/db/*` (may be cached in memory / `localStorage` — product choice) |
 
 ### Cookie attribute ladder (roll forward as deployment matures)
 
@@ -70,13 +67,12 @@ The auth system must work entirely offline — no external identity provider, no
 
 ### CORS and CSRF
 
-- Browser cookie profile requires **`Access-Control-Allow-Credentials: true`** and an **explicit allowlist** of origins (never `*` with credentials).
+- Session cookies require **`Access-Control-Allow-Credentials: true`** and an **explicit allowlist** of origins (never `*` with credentials).
 - Prefer **same-origin** API + SPA hosting to minimize CSRF surface. If cross-origin, document required mitigations (e.g. CSRF token, strict origin checks).
 
 ### SDK behavior
 
-- **`authTransport: 'cookie'`** (or equivalent): auth calls use `fetch(..., { credentials: 'include' })`; **do not** persist `refreshToken` from JSON; rely on cookie for refresh.
-- **`authTransport: 'bearer'`** (default for non-browser): current behavior; full session may use `StorageAdapter` as today.
+- All `/auth/*` calls use `fetch(..., { credentials: 'include' })`. Persist access + user + expiry only — **not** the session token.
 
 ### better-auth note
 

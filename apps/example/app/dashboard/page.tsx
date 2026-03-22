@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAppBase } from "@/lib/appbase";
-import { useRequireAuth } from "@/lib/auth";
+import { useAppBase, useAuth, useRequireAuth } from "@/lib/appbase";
 
 type RawCollectionRecord = {
   id: string;
@@ -32,8 +31,8 @@ function mapTodo(record: RawCollectionRecord): Todo {
 export default function DashboardPage() {
   const router = useRouter();
   const appBase = useAppBase();
-  const { hasSession, authHydrated } = useRequireAuth("/sign-in");
-  const { signOut, getSession } = appBase.auth;
+  const { signOut } = useAuth();
+  const { authState, authenticated, user } = useRequireAuth("/sign-in", router);
   const todosCollection = useMemo(() => appBase.db.collection("todos"), [appBase]);
 
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -53,9 +52,9 @@ export default function DashboardPage() {
   }, [todosCollection]);
 
   useEffect(() => {
-    if (!authHydrated || !hasSession) return;
+    if (authState === null || !authenticated) return;
     void loadTodos();
-  }, [authHydrated, hasSession, loadTodos]);
+  }, [authState, authenticated, loadTodos]);
 
   const createTodo = async () => {
     if (!title.trim()) {
@@ -118,7 +117,7 @@ export default function DashboardPage() {
     }
   };
 
-  if (!authHydrated) {
+  if (authState === null) {
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center p-6">
         <p className="text-sm opacity-75">Restoring session...</p>
@@ -126,7 +125,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!hasSession) {
+  if (!authenticated) {
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-4xl items-center justify-center p-6">
         <p className="text-sm opacity-75">Redirecting to sign in...</p>
@@ -134,7 +133,7 @@ export default function DashboardPage() {
     );
   }
 
-  const userEmail = getSession()?.user.email ?? "user";
+  const userEmail = user?.email ?? "user";
 
   return (
     <main className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 px-6 py-10">

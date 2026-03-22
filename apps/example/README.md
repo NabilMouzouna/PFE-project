@@ -42,15 +42,14 @@ Both are validated in `lib/env.ts`.
 
 ## SDK integration points
 
-- App provider + hook: `lib/appbase.tsx`
-- Auth guard helpers: `lib/auth.ts`
+- App provider + hooks: `lib/appbase.tsx` (`useAuth`, `useRequireAuth`, `useAppBase`)
 - Public env parsing: `lib/env.ts`
 - Dashboard DB usage: `app/dashboard/page.tsx`
 
 ## Notes
 
-- **Access token** (+ user + expiry metadata) is persisted in `localStorage` under `appbase_example_session`.
-- **Refresh token** stays **in memory only** (used as `Authorization: Bearer` for `/auth/refresh` and `/auth/logout`). After a full reload you keep working until the access JWT expires; then sign in again (no silent refresh without refresh in memory).
-- On load, `hydratePersistedSession()` refreshes only if the access token is stale **and** a refresh token is still in memory.
-- **Security:** localStorage for access tokens is a tradeoff; httpOnly cookies are stricter for production.
+- **Access token** (+ user + expiry) is persisted in `localStorage` under `appbase_example_session`.
+- **Session refresh** uses the HttpOnly **`appbase_session`** cookie. The SDK restores from `localStorage` and refreshes stale tokens automatically on startup.
+- **Security:** access JWT in `localStorage` is a tradeoff; the session token stays in the HttpOnly cookie.
+- If the SPA and API run on **different origins**, set **`CORS_ORIGINS`** on the API to your app origin.
 - Make sure your API key can access auth and db endpoints.

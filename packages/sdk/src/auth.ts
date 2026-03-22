@@ -8,12 +8,13 @@ import type {
   LogoutResponse,
 } from "@appbase/types";
 
-const AUTH_SESSION_EVENT = "appbase:auth-session";
+/** Auth state for conditional render and protected routes. */
+export type AuthState = {
+  authenticated: boolean;
+  user: { id: string; email: string } | null;
+};
 
-/**
- * What we persist to localStorage: access token + user + expiry metadata only.
- * Refresh token stays in memory (Bearer for /auth/refresh and /auth/logout only).
- */
+/** Persisted in localStorage: access JWT + user + expiry. Session refresh is HttpOnly cookie only. */
 type PersistedAccessSlice = {
   accessToken: string;
   expiresIn: number;
@@ -23,12 +24,6 @@ type PersistedAccessSlice = {
 
 function isBrowser(): boolean {
   return typeof window !== "undefined" && typeof localStorage !== "undefined";
-}
-
-function notifySessionListeners(): void {
-  if (isBrowser()) {
-    window.dispatchEvent(new Event(AUTH_SESSION_EVENT));
-  }
 }
 
 function isPersistedAccessSlice(value: unknown): value is PersistedAccessSlice {
@@ -45,16 +40,25 @@ function isPersistedAccessSlice(value: unknown): value is PersistedAccessSlice {
 }
 
 export class AuthClient {
-  /** Full session fields we keep in memory. */
   private session: Session | null = null;
-  /** Refresh token: memory only — never written to localStorage. */
-  private refreshTokenMemory: string | null = null;
   private accessTokenIssuedAt: number | null = null;
+  private listeners = new Set<(state: AuthState) => void>();
+  private initPromise: Promise<void>;
 
   constructor(private config: AppBaseConfig) {
-    if (isBrowser() && this.config.sessionStorageKey) {
+    this.initPromise = (() => {
+      if (!isBrowser() || !this.config.sessionStorageKey) return Promise.resolve();
       this.restoreFromStorage();
-    }
+      if (this.session && this.isAccessTokenStale()) {
+        return this.refreshAccessToken()
+          .catch(() => {
+            this.clearSessionInternal();
+            this.clearStorage();
+          })
+          .then(() => undefined);
+      }
+      return Promise.resolve();
+    })();
   }
 
   private get baseUrl() {
@@ -65,25 +69,31 @@ export class AuthClient {
     return this.config.sessionStorageKey;
   }
 
-  private setSessionFromLogin(session: Session, issuedAt: number): void {
-    this.session = session;
-    this.refreshTokenMemory = session.refreshToken;
+  private authFetch(init: RequestInit): RequestInit {
+    return { ...init, credentials: "include" };
+  }
+
+  private setSessionFromLogin(data: Session, issuedAt: number): void {
+    this.session = data;
     this.accessTokenIssuedAt = issuedAt;
   }
 
   private clearSessionInternal(): void {
     this.session = null;
-    this.refreshTokenMemory = null;
     this.accessTokenIssuedAt = null;
   }
 
-  /** Persist access slice only (no refresh token). */
+  private notifyListeners(): void {
+    const state = this.getAuthState();
+    this.listeners.forEach((cb) => cb(state));
+  }
+
   private persist(): void {
     const key = this.storageKey;
     if (!key || !isBrowser()) return;
     if (!this.session || this.accessTokenIssuedAt == null) {
       localStorage.removeItem(key);
-      notifySessionListeners();
+      this.notifyListeners();
       return;
     }
     const payload: PersistedAccessSlice = {
@@ -97,7 +107,7 @@ export class AuthClient {
     } catch {
       // ignore quota / private mode
     }
-    notifySessionListeners();
+    this.notifyListeners();
   }
 
   private restoreFromStorage(): void {
@@ -111,11 +121,9 @@ export class AuthClient {
         localStorage.removeItem(key);
         return;
       }
-      this.refreshTokenMemory = null;
       this.accessTokenIssuedAt = parsed.accessTokenIssuedAt;
       this.session = {
         accessToken: parsed.accessToken,
-        refreshToken: "",
         expiresIn: parsed.expiresIn,
         user: parsed.user,
       };
@@ -136,7 +144,7 @@ export class AuthClient {
     } catch {
       /* ignore */
     }
-    notifySessionListeners();
+    this.notifyListeners();
   }
 
   private isAccessTokenStale(): boolean {
@@ -146,70 +154,9 @@ export class AuthClient {
     return Date.now() - this.accessTokenIssuedAt >= ttlMs - skewMs;
   }
 
-  /**
-   * After mount: refresh access token if stale **and** refresh token is still in memory.
-   * After a full page reload, refresh token is gone — user stays logged in until access JWT expires.
-   */
-  hydratePersistedSession = async (): Promise<void> => {
-    if (!this.storageKey || !this.session) return;
-    if (!this.isAccessTokenStale()) return;
-    if (!this.refreshTokenMemory) {
-      // Access token expired and refresh exists only in memory (gone after reload) — clear stored access.
-      this.clearSessionInternal();
-      this.clearStorage();
-      return;
-    }
-    try {
-      await this.refresh();
-    } catch {
-      this.clearSessionInternal();
-      this.clearStorage();
-    }
-  };
-
-  signUp = async (data: RegisterRequest): Promise<Session> => {
-    const res = await fetch(`${this.baseUrl}/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    const json = (await res.json()) as { data: Session };
-    const now = Date.now();
-    this.setSessionFromLogin(json.data, now);
-    this.persist();
-    return json.data;
-  };
-
-  signIn = async (data: LoginRequest): Promise<Session> => {
-    const res = await fetch(`${this.baseUrl}/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    const json = (await res.json()) as { data: Session };
-    const now = Date.now();
-    this.setSessionFromLogin(json.data, now);
-    this.persist();
-    return json.data;
-  };
-
-  refresh = async (): Promise<RefreshResponse> => {
-    if (!this.session) {
-      throw new Error("No active session");
-    }
-    const rt = this.refreshTokenMemory;
-    if (!rt) {
-      throw new Error("No refresh token in memory; sign in again after a full page reload");
-    }
-
-    const res = await fetch(`${this.baseUrl}/refresh`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${rt}`,
-      },
-    });
+  private async refreshAccessToken(): Promise<RefreshResponse> {
+    if (!this.session) throw new Error("No active session");
+    const res = await fetch(`${this.baseUrl}/refresh`, this.authFetch({ method: "POST" }));
     if (!res.ok) throw new Error(await res.text());
     const json = (await res.json()) as { data: RefreshResponse };
     const now = Date.now();
@@ -221,31 +168,89 @@ export class AuthClient {
     this.accessTokenIssuedAt = now;
     this.persist();
     return json.data;
+  }
+
+  signUp = async (data: RegisterRequest): Promise<Session> => {
+    const res = await fetch(
+      `${this.baseUrl}/register`,
+      this.authFetch({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }),
+    );
+    if (!res.ok) throw new Error(await res.text());
+    const json = (await res.json()) as { data: Session };
+    const now = Date.now();
+    this.setSessionFromLogin(json.data, now);
+    this.persist();
+    return json.data;
+  };
+
+  signIn = async (data: LoginRequest): Promise<Session> => {
+    const res = await fetch(
+      `${this.baseUrl}/login`,
+      this.authFetch({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }),
+    );
+    if (!res.ok) throw new Error(await res.text());
+    const json = (await res.json()) as { data: Session };
+    const now = Date.now();
+    this.setSessionFromLogin(json.data, now);
+    this.persist();
+    return json.data;
   };
 
   signOut = async (): Promise<void> => {
-    const rt = this.refreshTokenMemory;
-    if (rt) {
-      const res = await fetch(`${this.baseUrl}/logout`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${rt}`,
-        },
-      });
-      if (!res.ok) throw new Error(await res.text());
-      await res.json() as { data: LogoutResponse };
-    }
+    const res = await fetch(`${this.baseUrl}/logout`, this.authFetch({ method: "POST" }));
+    if (!res.ok) throw new Error(await res.text());
+    await (res.json() as Promise<{ data: LogoutResponse }>);
     this.clearSessionInternal();
     this.clearStorage();
   };
 
-  getSession = (): Session | null => {
-    return this.session;
+  /** Current auth state. Use `authenticated` for conditional render or redirect. */
+  getAuthState = (): AuthState => {
+    const s = this.session;
+    if (!s?.user?.id || typeof s.user.email !== "string" || s.user.email.length === 0) {
+      return { authenticated: false, user: null };
+    }
+    if (this.isAccessTokenStale()) {
+      return { authenticated: false, user: null };
+    }
+    return { authenticated: true, user: { id: s.user.id, email: s.user.email } };
   };
 
-  getAccessToken = (): string | null => {
+  /** Resolves when the startup check (restore + optional refresh) is done. Use before gating protected routes. */
+  ready = (): Promise<void> => this.initPromise;
+
+  /** Subscribe to auth changes. First callback fires after startup restore/refresh; subsequent callbacks on changes. Returns unsubscribe. */
+  onAuthStateChange = (callback: (state: AuthState) => void): (() => void) => {
+    let unsubscribed = false;
+    const run = (state: AuthState) => {
+      if (!unsubscribed) callback(state);
+    };
+    this.listeners.add(run);
+    this.initPromise.then(() => {
+      if (!unsubscribed) run(this.getAuthState());
+    });
+    return () => {
+      unsubscribed = true;
+      this.listeners.delete(run);
+    };
+  };
+
+  /** Custom fields from sign-up (`customIdentity`). */
+  getCustomIdentity = (): Record<string, string> => {
+    const ci = this.session?.user.customIdentity;
+    if (!ci || typeof ci !== "object") return {};
+    return { ...ci };
+  };
+
+  getAccessToken(): string | null {
     return this.session?.accessToken ?? null;
-  };
+  }
 }
-
-export const AUTH_SESSION_CHANGE_EVENT = AUTH_SESSION_EVENT;
