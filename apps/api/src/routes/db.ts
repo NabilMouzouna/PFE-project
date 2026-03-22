@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { randomUUID } from "node:crypto";
 import { nanoid } from "nanoid";
 import { eq, and, sql, count } from "drizzle-orm";
