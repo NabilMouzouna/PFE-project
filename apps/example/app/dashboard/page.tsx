@@ -53,7 +53,6 @@ export default function DashboardPage() {
     try {
       const res = await todosCollection.list({
         filter: filter === "all" ? undefined : { done: filter === "done" },
-        limit: 100,
       });
       setTodos(res.items);
     } catch (err) {

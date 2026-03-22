@@ -189,7 +189,7 @@ describe("DbClient / CollectionRef", () => {
     );
   });
 
-  it("list without options uses default params", async () => {
+  it("list without options uses default limit of 10", async () => {
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({ success: true, data: { items: [], total: 0 } }),
@@ -200,7 +200,7 @@ describe("DbClient / CollectionRef", () => {
     const { items, total } = await col.list();
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://api.test/db/collections/items",
+      "http://api.test/db/collections/items?limit=10",
       expect.any(Object),
     );
     expect(items).toEqual([]);

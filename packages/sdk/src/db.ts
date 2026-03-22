@@ -21,6 +21,9 @@ export interface DbListResponse<T> {
   total: number;
 }
 
+/** Default limit when not specified. */
+export const LIST_DEFAULT_LIMIT = 10;
+
 /** Options for list queries. */
 export interface ListOptions {
   limit?: number;
@@ -147,19 +150,20 @@ export class CollectionRef<T extends Record<string, unknown>> {
     return this.recordFromApi(res!.data);
   }
 
-  /** List records. Options: limit, offset, filter (equality on data fields). */
+  /** List records. Options: limit (default 10), offset, filter (equality on data fields). */
   async list(options?: ListOptions): Promise<DbListResponse<T>> {
+    const effectiveOptions = { ...options, limit: options?.limit ?? LIST_DEFAULT_LIMIT };
     const scope = this.cacheScope();
-    const cacheKey = this.cache ? `${scope}:${cacheKeyForList(options)}` : null;
+    const cacheKey = this.cache ? `${scope}:${cacheKeyForList(effectiveOptions)}` : null;
     if (cacheKey && this.cache) {
       const cached = this.cache.list.get(cacheKey) as DbListResponse<T> | undefined;
       if (cached) return cached;
     }
 
     const params = new URLSearchParams();
-    if (options?.limit != null) params.set("limit", String(options.limit));
-    if (options?.offset != null) params.set("offset", String(options.offset));
-    if (options?.filter) params.set("filter", JSON.stringify(options.filter));
+    params.set("limit", String(effectiveOptions.limit));
+    if (effectiveOptions.offset != null) params.set("offset", String(effectiveOptions.offset));
+    if (effectiveOptions.filter) params.set("filter", JSON.stringify(effectiveOptions.filter));
     const query = params.toString();
     const path = query ? `${this.name}?${query}` : this.name;
 

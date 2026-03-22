@@ -111,6 +111,8 @@ export async function registerDbRoutes(app: FastifyInstance) {
     async (instance) => {
       const db = instance.db;
 
+      const log = instance.log.child({ module: "db" });
+
       // POST /db/collections/:collection
       instance.post<{
         Params: { collection: string };
@@ -174,6 +176,7 @@ export async function registerDbRoutes(app: FastifyInstance) {
 
         const payload = toRecordPayload(record);
         publish(collection, userId, { type: "created", collection, record: payload });
+        log.info({ collection, id: payload.id, userId }, "db.create");
 
         return reply.status(201).send(apiSuccess(payload));
       });
@@ -205,6 +208,7 @@ export async function registerDbRoutes(app: FastifyInstance) {
         };
 
         const unsub = subscribe(collection, userId, send);
+        log.info({ collection, userId }, "db.subscribe");
 
         request.raw.on("close", () => {
           unsub();
@@ -253,6 +257,7 @@ export async function registerDbRoutes(app: FastifyInstance) {
 
         const total = totalResult[0]?.count ?? 0;
         const items = rows.map(toRecordPayload);
+        log.info({ collection, total, limit, offset, userId }, "db.list");
 
         return reply.send(apiSuccess({ items, total }));
       });
@@ -282,6 +287,7 @@ export async function registerDbRoutes(app: FastifyInstance) {
             return reply.status(404).send(apiError("NOT_FOUND", "Record not found"));
           }
 
+          log.info({ collection, id, userId }, "db.get");
           return reply.send(apiSuccess(toRecordPayload(rows[0]!)));
         },
       );
@@ -349,6 +355,7 @@ export async function registerDbRoutes(app: FastifyInstance) {
         const record = updated[0]!;
         const payload = toRecordPayload(record);
         publish(collection, userId, { type: "updated", collection, record: payload });
+        log.info({ collection, id, userId }, "db.update");
 
         return reply.send(apiSuccess(payload));
       });
@@ -394,6 +401,7 @@ export async function registerDbRoutes(app: FastifyInstance) {
 
           const payload = { id, collection, ownerId: userId, data: existing[0]!.data, createdAt: existing[0]!.createdAt, updatedAt: existing[0]!.updatedAt };
           publish(collection, userId, { type: "deleted", collection, record: toRecordPayload(payload) });
+          log.info({ collection, id, userId }, "db.delete");
 
           return reply.send(apiSuccess({ deleted: true }));
         },

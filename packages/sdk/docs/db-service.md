@@ -36,7 +36,7 @@ const created = await todos.create({
   createdAt: new Date().toISOString(),
 });
 
-// List
+// List (default limit: 10)
 const { items, total } = await todos.list({ limit: 20 });
 
 // Get one
@@ -63,7 +63,7 @@ Set `dbCache: true` in `AppBase.init()` to enable in-memory caching for `list()`
 | Method                | Description                                                                   |
 | --------------------- | ----------------------------------------------------------------------------- |
 | `create(data)`        | Create a record. Validates with schema if provided. Returns full record.      |
-| `list(options?)`      | List records. Options: `limit`, `offset`, `filter` (equality on data fields). |
+| `list(options?)`      | List records. Options: `limit` (default 10), `offset`, `filter`.              |
 | `get(id)`             | Get one record. Throws `DbError` with code `NOT_FOUND` if missing.            |
 | `update(id, data)`    | Update a record. Partial data is merged with existing.                        |
 | `delete(id)`          | Delete a record. Throws `DbError` with code `NOT_FOUND` if missing.           |
@@ -91,11 +91,15 @@ Without a schema, `data` is untyped `Record<string, unknown>`.
 
 ## List options
 
+- **limit:** Max items to return. Default: 10 when omitted.
+- **offset:** Skip this many items (for pagination).
+- **filter:** AND equality on top-level data keys.
+
 ```ts
 const { items, total } = await todos.list({
-  limit: 10,
+  limit: 20,
   offset: 0,
-  filter: { done: false },  // AND equality on top-level data keys
+  filter: { done: false },
 });
 ```
 
