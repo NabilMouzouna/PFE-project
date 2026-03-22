@@ -4,31 +4,20 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
-import type { ChangeEvent } from "@appbase/sdk";
 import { useAppBase, useAuth, useRequireAuth } from "@/lib/appbase";
 import type { DbRecord } from "@appbase/sdk";
+import { Button, Input, Textarea, Modal, Badge, CardHeader } from "@/components/ui";
 
 const TodoSchema = z.object({
   title: z.string(),
   done: z.boolean(),
   createdAt: z.string(),
+  description: z.string().optional(),
+  updatedAt: z.string().optional(),
 });
 
 type TodoData = z.infer<typeof TodoSchema>;
 type Todo = DbRecord<TodoData>;
-
-function toTodo(raw: { id: string; collection: string; ownerId: string; data: unknown; createdAt: string; updatedAt: string }): Todo {
-  return {
-    ...raw,
-    data: TodoSchema.parse(raw.data) as TodoData,
-  };
-}
-
-function matchesFilter(todo: Todo, filter: "all" | "open" | "done"): boolean {
-  if (filter === "all") return true;
-  if (filter === "open") return !todo.data.done;
-  return todo.data.done;
-}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -42,9 +31,22 @@ export default function DashboardPage() {
 
   const [todos, setTodos] = useState<Todo[]>([]);
   const [title, setTitle] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "open" | "done">("all");
+
+  // Per-action loading for production UX
+  const [busyCreate, setBusyCreate] = useState(false);
+  const [busyToggleId, setBusyToggleId] = useState<string | null>(null);
+  const [busyDeleteId, setBusyDeleteId] = useState<string | null>(null);
+  const [busySignOut, setBusySignOut] = useState(false);
+
+  // Edit modal state
+  const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [busyEdit, setBusyEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const loadTodos = useCallback(async () => {
     setError(null);
@@ -66,86 +68,104 @@ export default function DashboardPage() {
     void loadTodos();
   }, [authState, authenticated, loadTodos, user?.id]);
 
-  const applyEvent = useCallback(
-    (event: ChangeEvent<TodoData>) => {
-      const record = event.record as unknown as { id: string; collection: string; ownerId: string; data: unknown; createdAt: string; updatedAt: string };
-      const todo = toTodo(record);
-
-      setTodos((prev) => {
-        if (event.type === "created") {
-          if (!matchesFilter(todo, filter)) return prev;
-          if (prev.some((t) => t.id === todo.id)) return prev;
-          return [...prev, todo];
-        }
-        if (event.type === "updated") {
-          if (!matchesFilter(todo, filter)) return prev.filter((t) => t.id !== todo.id);
-          return prev.map((t) => (t.id === todo.id ? todo : t));
-        }
-        if (event.type === "deleted") {
-          return prev.filter((t) => t.id !== todo.id);
-        }
-        return prev;
-      });
-    },
-    [filter],
-  );
-
-  useEffect(() => {
-    if (authState === null || !authenticated) return;
-    const unsub = todosCollection.subscribe(applyEvent);
-    return unsub;
-  }, [authState, authenticated, todosCollection, applyEvent]);
-
   const createTodo = async () => {
     if (!title.trim()) {
       setError("Title is required");
       return;
     }
-    setBusy(true);
+    setBusyCreate(true);
     setError(null);
     try {
       const created = await todosCollection.create({
         title: title.trim(),
         done: false,
         createdAt: new Date().toISOString(),
+        ...(description.trim() ? { description: description.trim() } : {}),
       });
       setTitle("");
+      setDescription("");
       setTodos((prev) => (prev.some((t) => t.id === created.id) ? prev : [...prev, created]));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create todo");
     } finally {
-      setBusy(false);
+      setBusyCreate(false);
     }
   };
 
   const toggleTodo = async (todo: Todo) => {
-    setBusy(true);
+    setBusyToggleId(todo.id);
     setError(null);
+    const nextDone = !todo.data.done;
+    setTodos((prev) =>
+      prev.map((t) => (t.id === todo.id ? { ...t, data: { ...t.data, done: nextDone } } : t)),
+    );
     try {
-      const updated = await todosCollection.update(todo.id, { done: !todo.data.done });
+      const updated = await todosCollection.update(todo.id, { done: nextDone });
       setTodos((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
     } catch (err) {
+      setTodos((prev) =>
+        prev.map((t) => (t.id === todo.id ? { ...t, data: { ...t.data, done: todo.data.done } } : t)),
+      );
       setError(err instanceof Error ? err.message : "Failed to update todo");
     } finally {
-      setBusy(false);
+      setBusyToggleId(null);
     }
   };
 
   const removeTodo = async (todoId: string) => {
-    setBusy(true);
+    const removed = todos.find((t) => t.id === todoId);
+    setBusyDeleteId(todoId);
     setError(null);
+    setTodos((prev) => prev.filter((t) => t.id !== todoId));
     try {
       await todosCollection.delete(todoId);
-      setTodos((prev) => prev.filter((t) => t.id !== todoId));
     } catch (err) {
+      if (removed) setTodos((prev) => [...prev, removed].sort((a, b) => a.data.createdAt.localeCompare(b.data.createdAt)));
       setError(err instanceof Error ? err.message : "Failed to delete todo");
     } finally {
-      setBusy(false);
+      setBusyDeleteId(null);
+    }
+  };
+
+  const openEditModal = (todo: Todo) => {
+    setEditingTodo(todo);
+    setEditTitle(todo.data.title);
+    setEditDescription(todo.data.description ?? "");
+    setEditError(null);
+  };
+
+  const closeEditModal = () => {
+    setEditingTodo(null);
+    setEditTitle("");
+    setEditDescription("");
+    setEditError(null);
+    setBusyEdit(false);
+  };
+
+  const saveEdit = async () => {
+    if (!editingTodo) return;
+    if (!editTitle.trim()) {
+      setEditError("Title is required");
+      return;
+    }
+    setBusyEdit(true);
+    setEditError(null);
+    try {
+      const updated = await todosCollection.update(editingTodo.id, {
+        title: editTitle.trim(),
+        description: editDescription.trim() || undefined,
+      });
+      setTodos((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+      closeEditModal();
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Failed to update todo");
+    } finally {
+      setBusyEdit(false);
     }
   };
 
   const onSignOut = async () => {
-    setBusy(true);
+    setBusySignOut(true);
     setError(null);
     try {
       await signOut();
@@ -153,9 +173,11 @@ export default function DashboardPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to sign out");
     } finally {
-      setBusy(false);
+      setBusySignOut(false);
     }
   };
+
+  const hasBusyItem = busyToggleId ?? busyDeleteId;
 
   if (authState === null) {
     return (
@@ -187,62 +209,72 @@ export default function DashboardPage() {
             <p className="mt-2 text-sm opacity-75">Signed in as {userEmail}</p>
           </div>
           <div className="flex gap-2">
-            <Link className="rounded-lg border-2 border-var(--line) px-3 py-2 text-sm" href="/">
+            <Link
+              className="rounded-lg border-2 border-var(--line) px-3 py-2 text-sm transition-colors hover:bg-var(--panel) focus:outline-none focus:ring-2 focus:ring-var(--accent)"
+              href="/"
+            >
               Home
             </Link>
-            <button
-              disabled={busy}
-              className="rounded-lg border-2 border-var(--line) bg-var(--accent) px-3 py-2 text-sm text-[#fffaf0] disabled:opacity-60"
-              onClick={onSignOut}
-            >
+            <Button variant="primary" disabled={busySignOut} loading={busySignOut} onClick={onSignOut}>
               Sign out
-            </button>
+            </Button>
           </div>
         </div>
       </header>
 
       <section className="app-card p-6">
-        <h2 className="text-lg font-semibold">Add todo</h2>
+        <CardHeader title="Add todo" />
         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-          <input
-            className="app-input flex-1"
-            placeholder="Write your next task..."
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <button
-            disabled={busy}
-            className="app-button rounded-lg px-4 py-2 disabled:opacity-60"
-            onClick={createTodo}
-          >
+          <div className="flex flex-1 flex-col gap-2">
+            <Input
+              placeholder="Write your next task..."
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && createTodo()}
+              disabled={busyCreate}
+            />
+            <Input
+              placeholder="Optional description..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && createTodo()}
+              disabled={busyCreate}
+            />
+          </div>
+          <Button variant="primary" disabled={busyCreate} loading={busyCreate} onClick={createTodo}>
             Add
-          </button>
+          </Button>
         </div>
-        {error ? <p className="mt-3 text-sm text-red-600 dark:text-red-300">{error}</p> : null}
+        {error ? (
+          <p className="mt-3 text-sm text-red-600 dark:text-red-300" role="alert">
+            {error}
+          </p>
+        ) : null}
       </section>
 
       <section className="app-card p-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Your todos</h2>
-          <div className="flex items-center gap-2">
-            <span className="text-sm opacity-75">Show:</span>
-            {(["all", "open", "done"] as const).map((f) => (
-              <button
-                key={f}
-                className={`rounded-lg border-2 px-3 py-2 text-sm capitalize ${
-                  filter === f ? "border-var(--accent) bg-var(--accent) text-[#fffaf0]" : "border-var(--line)"
-                }`}
-                onClick={() => setFilter(f)}
-                disabled={busy}
-              >
-                {f}
-              </button>
-            ))}
-            <button className="rounded-lg border-2 border-var(--line) px-3 py-2 text-sm" onClick={() => void loadTodos()} disabled={busy}>
-              Refresh
-            </button>
-          </div>
-        </div>
+        <CardHeader
+          title="Your todos"
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm opacity-75">Show:</span>
+              {(["all", "open", "done"] as const).map((f) => (
+                <Button
+                  key={f}
+                  variant={filter === f ? "primary" : "secondary"}
+                  size="sm"
+                  onClick={() => setFilter(f)}
+                  disabled={!!hasBusyItem}
+                >
+                  {f}
+                </Button>
+              ))}
+              <Button variant="secondary" size="sm" onClick={() => void loadTodos()} disabled={!!hasBusyItem}>
+                Refresh
+              </Button>
+            </div>
+          }
+        />
 
         {todos.length === 0 ? (
           <p className="rounded-lg border-2 border-dashed border-var(--line) p-6 text-center text-sm opacity-75">
@@ -253,31 +285,93 @@ export default function DashboardPage() {
             {todos.map((todo) => (
               <li
                 key={todo.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-var(--line) bg-var(--paper) p-4 transition-colors hover:border-var(--accent)/50"
               >
-                <button
-                  className={`text-left ${todo.data.done ? "line-through opacity-60" : ""} transition hover:translate-x-0.5`}
-                  onClick={() => toggleTodo(todo)}
-                  disabled={busy}
-                >
-                  <div className="font-medium">{todo.data.title}</div>
-                  <div className="text-xs opacity-65">
-                    {new Date(todo.data.createdAt).toLocaleString()} | {todo.data.done ? "Done" : "Open"}
-                  </div>
-                </button>
-                <button
-                  className="rounded-lg border-2 border-var(--line) bg-var(--panel) px-3 py-1 text-sm"
-                  onClick={() => removeTodo(todo.id)}
-                  disabled={busy}
-                >
-                  Delete
-                </button>
+                <div className="min-w-0 flex-1">
+                  <button
+                    type="button"
+                    className={`cursor-pointer text-left transition hover:translate-x-0.5 focus:outline-none focus:ring-2 focus:ring-var(--accent) focus:ring-offset-2 ${
+                      todo.data.done ? "line-through opacity-60" : ""
+                    }`}
+                    onClick={() => toggleTodo(todo)}
+                    disabled={!!hasBusyItem || busyToggleId === todo.id}
+                  >
+                    <div className="font-medium">{todo.data.title}</div>
+                    {todo.data.description && (
+                      <div className="mt-1 text-sm text-var(--foreground)/75">{todo.data.description}</div>
+                    )}
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <span className="text-xs opacity-65">
+                        {new Date(todo.data.createdAt).toLocaleString()}
+                      </span>
+                      <Badge variant={todo.data.done ? "done" : "open"}>
+                        {todo.data.done ? "Done" : "Open"}
+                      </Badge>
+                    </div>
+                  </button>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => openEditModal(todo)}
+                    disabled={!!hasBusyItem}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => removeTodo(todo.id)}
+                    disabled={!!hasBusyItem}
+                    loading={busyDeleteId === todo.id}
+                  >
+                    Delete
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>
         )}
       </section>
+
+      <Modal
+        isOpen={!!editingTodo}
+        onClose={closeEditModal}
+        title="Edit todo"
+      >
+        {editingTodo && (
+          <div className="space-y-4">
+            <Input
+              label="Title"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              placeholder="Todo title"
+              error={editError && !editTitle.trim() ? "Title is required" : undefined}
+            />
+            <Textarea
+              label="Description"
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              placeholder="Optional description"
+              rows={3}
+            />
+            {editError && editTitle.trim() ? (
+              <p className="text-sm text-red-600 dark:text-red-300" role="alert">
+                {editError}
+              </p>
+            ) : null}
+            <div className="flex gap-2 pt-2">
+              <Button variant="primary" onClick={saveEdit} loading={busyEdit} disabled={busyEdit}>
+                Save
+              </Button>
+              <Button variant="secondary" onClick={closeEditModal} disabled={busyEdit}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </main>
   );
 }
-

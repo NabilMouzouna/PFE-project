@@ -9,7 +9,7 @@ const envSchema = z.object({
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
     .default("info"),
   BASE_URL: z.string().url().optional(),
-  /** Comma-separated list of allowed browser origins for credentialed CORS (e.g. `http://localhost:3001`). */
+  /** Comma-separated allowed origins (e.g. `http://localhost:3001`). Use `*` to allow any origin. */
   CORS_ORIGINS: z.string().optional(),
   AUTH_SECRET: z
     .string()

@@ -11,6 +11,7 @@ import {
 
 function isExcluded(method: string, path: string, nodeEnv: string): boolean {
   const p = path.split("?")[0] ?? "/";
+  if (method === "OPTIONS") return true; // CORS preflight; browser omits credentials
   if (method === "GET" && (p === HEALTH_PATH || p.startsWith(DOCS_PATH_PREFIX))) return true;
   // In test: auth is public so tests can run without seeding API keys
   if (nodeEnv === "test" && method === "POST" && TEST_EXCLUDED_AUTH_POST_PATHS.includes(p))

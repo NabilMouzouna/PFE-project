@@ -15,7 +15,7 @@ export async function registerInfrastructure(app: FastifyInstance, env: AppEnv) 
         cb(null, true);
         return;
       }
-      if (env.corsAllowedOrigins.includes(origin)) {
+      if (env.corsAllowedOrigins.includes("*") || env.corsAllowedOrigins.includes(origin)) {
         cb(null, true);
         return;
       }

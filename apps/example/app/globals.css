@@ -76,11 +76,32 @@ h3 {
   box-shadow: 3px 3px 0 var(--line);
 }
 
-.app-button:hover {
+/* Interactive elements: cursor and focus for production UX */
+button,
+a,
+[role="button"],
+input[type="submit"],
+input[type="button"],
+select,
+label[for] {
+  cursor: pointer;
+}
+
+input:not([type="submit"]):not([type="button"]),
+textarea {
+  cursor: text;
+}
+
+button:disabled,
+a[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+.app-button:hover:not(:disabled) {
   transform: translate(-1px, -1px);
 }
 
-.app-button:active {
+.app-button:active:not(:disabled) {
   transform: translate(2px, 2px);
   box-shadow: 1px 1px 0 var(--line);
 }

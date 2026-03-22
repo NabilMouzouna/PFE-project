@@ -10,8 +10,10 @@ import {
 /**
  * Paths that require JWT verification (Authorization: Bearer <access-token>).
  * Excludes /auth/refresh and /auth/logout which use session token.
+ * Skips OPTIONS (CORS preflight); browser omits credentials on preflight.
  */
 function requiresJwt(method: string, path: string): boolean {
+  if (method === "OPTIONS") return false;
   const p = path.split("?")[0] ?? "";
   return JWT_PROTECTED_PATH_PREFIXES.some((prefix) => p.startsWith(prefix));
 }
