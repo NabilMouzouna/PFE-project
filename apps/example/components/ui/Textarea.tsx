@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, type TextareaHTMLAttributes } from "react";
+import { forwardRef, useId, type TextareaHTMLAttributes } from "react";
 
 export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
@@ -10,7 +10,8 @@ export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElemen
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ label, error, hint, id, className = "", ...props }, ref) => {
-    const inputId = id ?? `textarea-${Math.random().toString(36).slice(2)}`;
+    const generatedId = useId();
+    const inputId = id ?? `textarea-${generatedId.replace(/:/g, "")}`;
 
     return (
       <div className="w-full">

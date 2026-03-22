@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, type InputHTMLAttributes } from "react";
+import { forwardRef, useId, type InputHTMLAttributes } from "react";
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -10,7 +10,8 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, hint, id, className = "", ...props }, ref) => {
-    const inputId = id ?? `input-${Math.random().toString(36).slice(2)}`;
+    const generatedId = useId();
+    const inputId = id ?? `input-${generatedId.replace(/:/g, "")}`;
 
     return (
       <div className="w-full">
