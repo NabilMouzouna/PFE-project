@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
+import type { ChangeEvent } from "@appbase/sdk";
 import { useAppBase, useAuth, useRequireAuth } from "@/lib/appbase";
 import type { DbRecord } from "@appbase/sdk";
 
@@ -15,6 +16,19 @@ const TodoSchema = z.object({
 
 type TodoData = z.infer<typeof TodoSchema>;
 type Todo = DbRecord<TodoData>;
+
+function toTodo(raw: { id: string; collection: string; ownerId: string; data: unknown; createdAt: string; updatedAt: string }): Todo {
+  return {
+    ...raw,
+    data: TodoSchema.parse(raw.data) as TodoData,
+  };
+}
+
+function matchesFilter(todo: Todo, filter: "all" | "open" | "done"): boolean {
+  if (filter === "all") return true;
+  if (filter === "open") return !todo.data.done;
+  return todo.data.done;
+}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -51,13 +65,35 @@ export default function DashboardPage() {
     void loadTodos();
   }, [authState, authenticated, loadTodos]);
 
+  const applyEvent = useCallback(
+    (event: ChangeEvent<TodoData>) => {
+      const record = event.record as unknown as { id: string; collection: string; ownerId: string; data: unknown; createdAt: string; updatedAt: string };
+      const todo = toTodo(record);
+
+      setTodos((prev) => {
+        if (event.type === "created") {
+          if (!matchesFilter(todo, filter)) return prev;
+          if (prev.some((t) => t.id === todo.id)) return prev;
+          return [...prev, todo];
+        }
+        if (event.type === "updated") {
+          if (!matchesFilter(todo, filter)) return prev.filter((t) => t.id !== todo.id);
+          return prev.map((t) => (t.id === todo.id ? todo : t));
+        }
+        if (event.type === "deleted") {
+          return prev.filter((t) => t.id !== todo.id);
+        }
+        return prev;
+      });
+    },
+    [filter],
+  );
+
   useEffect(() => {
     if (authState === null || !authenticated) return;
-    const unsub = todosCollection.subscribe(() => {
-      void loadTodos();
-    });
+    const unsub = todosCollection.subscribe(applyEvent);
     return unsub;
-  }, [authState, authenticated, todosCollection, loadTodos]);
+  }, [authState, authenticated, todosCollection, applyEvent]);
 
   const createTodo = async () => {
     if (!title.trim()) {
@@ -67,13 +103,13 @@ export default function DashboardPage() {
     setBusy(true);
     setError(null);
     try {
-      await todosCollection.create({
+      const created = await todosCollection.create({
         title: title.trim(),
         done: false,
         createdAt: new Date().toISOString(),
       });
       setTitle("");
-      await loadTodos();
+      setTodos((prev) => (prev.some((t) => t.id === created.id) ? prev : [...prev, created]));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create todo");
     } finally {
@@ -85,8 +121,8 @@ export default function DashboardPage() {
     setBusy(true);
     setError(null);
     try {
-      await todosCollection.update(todo.id, { done: !todo.data.done });
-      await loadTodos();
+      const updated = await todosCollection.update(todo.id, { done: !todo.data.done });
+      setTodos((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update todo");
     } finally {
@@ -99,7 +135,7 @@ export default function DashboardPage() {
     setError(null);
     try {
       await todosCollection.delete(todoId);
-      await loadTodos();
+      setTodos((prev) => prev.filter((t) => t.id !== todoId));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete todo");
     } finally {

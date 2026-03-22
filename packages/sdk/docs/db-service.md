@@ -16,6 +16,7 @@ const appbase = AppBase.init({
   endpoint: "http://localhost:3000",
   apiKey: "hs_live_your_key",
   sessionStorageKey: "my_app_session",
+  dbCache: true,  // optional: cache list/get, invalidate on create/update/delete
 });
 
 const TodoSchema = z.object({
@@ -47,6 +48,12 @@ await todos.update(created.id, { done: true });
 // Delete
 await todos.delete(created.id);
 ```
+
+---
+
+## Caching
+
+Set `dbCache: true` in `AppBase.init()` to enable in-memory caching for `list()` and `get()`. Cache is invalidated on `create`, `update`, and `delete` for the affected collection. Reduces redundant network requests when the same data is fetched repeatedly (e.g. from multiple components or after subscribe events).
 
 ---
 

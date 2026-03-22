@@ -39,7 +39,7 @@ describe("DbClient / CollectionRef", () => {
       }),
     });
 
-    const db = new DbClient(mockConfig, mockAuth);
+    const db = new DbClient(mockConfig, mockAuth, false);
     const col = db.collection<Todo>("todos", TodoSchema);
     const result = await col.create({ title: "Test", done: false });
 
@@ -64,7 +64,7 @@ describe("DbClient / CollectionRef", () => {
     const TodoSchema = z.object({ title: z.string(), done: z.boolean() });
     type Todo = z.infer<typeof TodoSchema>;
 
-    const db = new DbClient(mockConfig, mockAuth);
+    const db = new DbClient(mockConfig, mockAuth, false);
     const col = db.collection<Todo>("todos", TodoSchema);
 
     await expect(col.create({ title: "Ok", done: "not-a-bool" as unknown as boolean })).rejects.toThrow(z.ZodError);
@@ -95,7 +95,7 @@ describe("DbClient / CollectionRef", () => {
       }),
     });
 
-    const db = new DbClient(mockConfig, mockAuth);
+    const db = new DbClient(mockConfig, mockAuth, false);
     const col = db.collection<Todo>("todos", TodoSchema);
     const { items, total } = await col.list({ limit: 10, filter: { done: false } });
 
@@ -119,7 +119,7 @@ describe("DbClient / CollectionRef", () => {
         }),
     });
 
-    const db = new DbClient(mockConfig, mockAuth);
+    const db = new DbClient(mockConfig, mockAuth, false);
     const col = db.collection("todos");
 
     await expect(col.get("missing")).rejects.toMatchObject({
@@ -148,7 +148,7 @@ describe("DbClient / CollectionRef", () => {
       }),
     });
 
-    const db = new DbClient(mockConfig, mockAuth);
+    const db = new DbClient(mockConfig, mockAuth, false);
     const col = db.collection<Todo>("todos", TodoSchema);
     const result = await col.get("rec_1");
 
@@ -164,7 +164,7 @@ describe("DbClient / CollectionRef", () => {
       json: async () => ({ success: true, data: { deleted: true } }),
     });
 
-    const db = new DbClient(mockConfig, mockAuth);
+    const db = new DbClient(mockConfig, mockAuth, false);
     const col = db.collection("todos");
     await col.delete("rec_1");
 
@@ -180,7 +180,7 @@ describe("DbClient / CollectionRef", () => {
       json: async () => ({ success: true, data: { deleted: true } }),
     });
 
-    const db = new DbClient(mockConfig, mockAuth);
+    const db = new DbClient(mockConfig, mockAuth, false);
     const col = db.collection("todos");
     await col.remove("rec_1");
     expect(fetchMock).toHaveBeenCalledWith(
@@ -195,7 +195,7 @@ describe("DbClient / CollectionRef", () => {
       json: async () => ({ success: true, data: { items: [], total: 0 } }),
     });
 
-    const db = new DbClient(mockConfig, mockAuth);
+    const db = new DbClient(mockConfig, mockAuth, false);
     const col = db.collection("items");
     const { items, total } = await col.list();
 
@@ -228,7 +228,7 @@ describe("DbClient / CollectionRef", () => {
       }),
     });
 
-    const db = new DbClient(mockConfig, mockAuth);
+    const db = new DbClient(mockConfig, mockAuth, false);
     const col = db.collection("items");
     const { items } = await col.list();
     expect(items[0]!.data).toEqual({ foo: "bar" });
@@ -265,7 +265,7 @@ describe("DbClient / CollectionRef", () => {
         }),
       });
 
-    const db = new DbClient(mockConfig, mockAuth);
+    const db = new DbClient(mockConfig, mockAuth, false);
     const col = db.collection("todos");
     const result = await col.update("rec_1", { done: true });
 
@@ -275,6 +275,64 @@ describe("DbClient / CollectionRef", () => {
       body: JSON.stringify({ data: { title: "Original", done: true } }),
     });
     expect(result.data.done).toBe(true);
+  });
+
+  it("list returns from cache when dbCache enabled", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: { items: [], total: 0 },
+      }),
+    });
+
+    const db = new DbClient(mockConfig, mockAuth, true);
+    const col = db.collection("items");
+
+    const r1 = await col.list({ limit: 10 });
+    const r2 = await col.list({ limit: 10 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(r1).toEqual(r2);
+  });
+
+  it("list cache invalidated on create", async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, data: { items: [], total: 0 } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: {
+            id: "rec_1",
+            collection: "items",
+            ownerId: "u",
+            data: {},
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: { items: [{ id: "rec_1", collection: "items", ownerId: "u", data: {}, createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" }], total: 1 },
+        }),
+      });
+
+    const db = new DbClient(mockConfig, mockAuth, true);
+    const col = db.collection("items");
+
+    await col.list({ limit: 10 });
+    await col.create({});
+    const { items } = await col.list({ limit: 10 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(items).toHaveLength(1);
   });
 
   it("subscribe calls fetch with auth headers and parses SSE events", async () => {
@@ -292,7 +350,7 @@ describe("DbClient / CollectionRef", () => {
       body: stream,
     });
 
-    const db = new DbClient(mockConfig, mockAuth);
+    const db = new DbClient(mockConfig, mockAuth, false);
     const col = db.collection("todos");
     const events: unknown[] = [];
     const unsub = col.subscribe((e) => events.push(e));

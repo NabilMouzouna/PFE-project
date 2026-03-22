@@ -10,14 +10,20 @@ Modern Next.js todo application using `@appbase/sdk` for auth and database acces
 
 ## Setup
 
-1. Make sure API is running at `http://localhost:3000` (or your custom endpoint).
+1. Make sure the **API is running** at `http://localhost:3000` (see `apps/api/`).
 2. Create `apps/example/.env.local` from `.env.example`.
 3. Put a valid instance API key in `NEXT_PUBLIC_APPBASE_API_KEY`.
-4. Start this app.
+4. Start this app (runs on port **3001** to avoid conflict with the API on 3000).
 
 ```bash
+# Option A: Run both API and example together (from repo root)
+pnpm dev
+
+# Option B: Run only the example (API must already be running on 3000)
 pnpm --filter example dev
 ```
+
+The example uses port **3001**; the API uses **3000**. If the API is not running, you'll get `TypeError: Failed to fetch` on sign-in.
 
 ## Environment variables
 

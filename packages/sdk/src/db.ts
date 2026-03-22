@@ -3,6 +3,8 @@ import type { AppBaseConfig } from "./appbase";
 import type { AuthClient } from "./auth";
 import type { ChangeEvent, RecordId } from "@appbase/types";
 
+export type { ChangeEvent } from "@appbase/types";
+
 /** Record returned by the API — includes id, collection, ownerId, data, timestamps. */
 export interface DbRecord<T = Record<string, unknown>> {
   id: RecordId;
@@ -29,6 +31,19 @@ export interface ListOptions {
 /** Zod schema type for inference. */
 export type ZodSchema<T> = z.ZodType<T>;
 
+/** Per-collection cache store. Invalidated on create/update/delete. */
+type CollectionCache = {
+  list: Map<string, { items: DbRecord<unknown>[]; total: number }>;
+  records: Map<string, DbRecord<unknown>>;
+};
+
+function cacheKeyForList(options?: ListOptions): string {
+  const o = options ?? {};
+  const keys = Object.keys(o).sort();
+  const obj = keys.length ? Object.fromEntries(keys.map((k) => [k, (o as Record<string, unknown>)[k]])) : {};
+  return JSON.stringify(obj);
+}
+
 function parseErrorResponse(text: string): { code?: string; message?: string } {
   try {
     const parsed = JSON.parse(text) as { error?: { code?: string; message?: string } };
@@ -54,7 +69,14 @@ export class CollectionRef<T extends Record<string, unknown>> {
     private baseUrl: string,
     private headers: () => Record<string, string>,
     private schema?: ZodSchema<T>,
+    private cache?: CollectionCache,
   ) {}
+
+  private invalidateCache(id?: string): void {
+    if (!this.cache) return;
+    this.cache.list.clear();
+    if (id) this.cache.records.delete(id);
+  }
 
   private async request<TRes>(
     method: string,
@@ -113,11 +135,18 @@ export class CollectionRef<T extends Record<string, unknown>> {
       this.name,
       { data },
     );
+    this.invalidateCache();
     return this.recordFromApi(res!.data);
   }
 
   /** List records. Options: limit, offset, filter (equality on data fields). */
   async list(options?: ListOptions): Promise<DbListResponse<T>> {
+    const cacheKey = this.cache ? cacheKeyForList(options) : null;
+    if (cacheKey && this.cache) {
+      const cached = this.cache.list.get(cacheKey) as DbListResponse<T> | undefined;
+      if (cached) return cached;
+    }
+
     const params = new URLSearchParams();
     if (options?.limit != null) params.set("limit", String(options.limit));
     if (options?.offset != null) params.set("offset", String(options.offset));
@@ -131,16 +160,25 @@ export class CollectionRef<T extends Record<string, unknown>> {
     );
 
     const items = (res!.data.items ?? []).map((item) => this.recordFromApi(item));
-    return { items, total: res!.data.total };
+    const result = { items, total: res!.data.total };
+    if (cacheKey && this.cache) this.cache.list.set(cacheKey, result as { items: DbRecord<unknown>[]; total: number });
+    return result;
   }
 
   /** Get one record by id. Throws DbError with code NOT_FOUND if missing. */
   async get(id: string): Promise<DbRecord<T>> {
+    if (this.cache) {
+      const cached = this.cache.records.get(id) as DbRecord<T> | undefined;
+      if (cached) return cached;
+    }
+
     const res = await this.request<{ success: true; data: { id: string; collection: string; ownerId: string; data: unknown; createdAt: string; updatedAt: string } }>(
       "GET",
       `${this.name}/${encodeURIComponent(id)}`,
     );
-    return this.recordFromApi(res!.data);
+    const record = this.recordFromApi(res!.data);
+    if (this.cache) this.cache.records.set(id, record as DbRecord<unknown>);
+    return record;
   }
 
   /** Update a record. Partial data — merged with existing, then sent to server. */
@@ -155,6 +193,7 @@ export class CollectionRef<T extends Record<string, unknown>> {
       `${this.name}/${encodeURIComponent(id)}`,
       { data: merged },
     );
+    this.invalidateCache(id);
     return this.recordFromApi(res!.data);
   }
 
@@ -164,6 +203,7 @@ export class CollectionRef<T extends Record<string, unknown>> {
       "DELETE",
       `${this.name}/${encodeURIComponent(id)}`,
     );
+    this.invalidateCache(id);
   }
 
   /** Alias for delete. */
@@ -226,9 +266,12 @@ export class CollectionRef<T extends Record<string, unknown>> {
 }
 
 export class DbClient {
+  private collectionCaches = new Map<string, CollectionCache>();
+
   constructor(
     private config: AppBaseConfig,
     private auth: AuthClient,
+    private cacheEnabled: boolean,
   ) {}
 
   private get baseUrl() {
@@ -243,12 +286,23 @@ export class DbClient {
     };
   }
 
+  private getOrCreateCache(collectionName: string): CollectionCache | undefined {
+    if (!this.cacheEnabled) return undefined;
+    let cache = this.collectionCaches.get(collectionName);
+    if (!cache) {
+      cache = { list: new Map(), records: new Map() };
+      this.collectionCaches.set(collectionName, cache);
+    }
+    return cache;
+  }
+
   /** Get a typed collection. Schema optional — when provided, validates create/update and parses get/list. */
   collection<T extends Record<string, unknown> = Record<string, unknown>>(
     name: string,
     schema?: ZodSchema<T>,
   ): CollectionRef<T> {
-    return new CollectionRef<T>(name, this.baseUrl, () => this.headers(), schema);
+    const cache = this.getOrCreateCache(name);
+    return new CollectionRef<T>(name, this.baseUrl, () => this.headers(), schema, cache);
   }
 }
 
