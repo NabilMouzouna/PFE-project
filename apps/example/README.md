@@ -37,7 +37,9 @@ Both are validated in `lib/env.ts`.
 
 - Sign up and sign in using `appBase.auth.*`
 - Protected dashboard redirecting unauthenticated users to `/sign-in`
-- Todo create/list/toggle/delete using `appBase.db.collection("todos")`
+- Todo create/list/toggle/delete using typed `appBase.db.collection<T>("todos", TodoSchema)` with Zod schema
+- Real-time updates via `collection.subscribe()` — list refreshes when todos change (e.g. from another tab)
+- List filtering: All / Open / Done (uses `list({ filter })` with equality on `done`)
 - Sign out from dashboard
 
 ## SDK integration points
@@ -45,6 +47,10 @@ Both are validated in `lib/env.ts`.
 - App provider + hooks: `lib/appbase.tsx` (`useAuth`, `useRequireAuth`, `useAppBase`)
 - Public env parsing: `lib/env.ts`
 - Dashboard DB usage: `app/dashboard/page.tsx`
+  - Typed collection: `appBase.db.collection<TodoData>("todos", TodoSchema)`
+  - CRUD: `create`, `list`, `update`, `delete`
+  - Real-time: `collection.subscribe(callback)` for live updates
+  - List options: `list({ filter: { done: false }, limit: 100 })`
 
 ## Notes
 

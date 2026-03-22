@@ -30,22 +30,34 @@ export default function DashboardPage() {
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | "open" | "done">("all");
 
   const loadTodos = useCallback(async () => {
     setError(null);
     try {
-      const res = await todosCollection.list();
+      const res = await todosCollection.list({
+        filter: filter === "all" ? undefined : { done: filter === "done" },
+        limit: 100,
+      });
       setTodos(res.items);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to load todos";
       setError(msg);
     }
-  }, [todosCollection]);
+  }, [todosCollection, filter]);
 
   useEffect(() => {
     if (authState === null || !authenticated) return;
     void loadTodos();
   }, [authState, authenticated, loadTodos]);
+
+  useEffect(() => {
+    if (authState === null || !authenticated) return;
+    const unsub = todosCollection.subscribe(() => {
+      void loadTodos();
+    });
+    return unsub;
+  }, [authState, authenticated, todosCollection, loadTodos]);
 
   const createTodo = async () => {
     if (!title.trim()) {
@@ -173,11 +185,26 @@ export default function DashboardPage() {
       </section>
 
       <section className="app-card p-6">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">Your todos</h2>
-          <button className="rounded-lg border-2 border-var(--line) px-3 py-2 text-sm" onClick={loadTodos} disabled={busy}>
-            Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-sm opacity-75">Show:</span>
+            {(["all", "open", "done"] as const).map((f) => (
+              <button
+                key={f}
+                className={`rounded-lg border-2 px-3 py-2 text-sm capitalize ${
+                  filter === f ? "border-var(--accent) bg-var(--accent) text-[#fffaf0]" : "border-var(--line)"
+                }`}
+                onClick={() => setFilter(f)}
+                disabled={busy}
+              >
+                {f}
+              </button>
+            ))}
+            <button className="rounded-lg border-2 border-var(--line) px-3 py-2 text-sm" onClick={() => void loadTodos()} disabled={busy}>
+              Refresh
+            </button>
+          </div>
         </div>
 
         {todos.length === 0 ? (
