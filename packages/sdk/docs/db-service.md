@@ -53,7 +53,7 @@ await todos.delete(created.id);
 
 ## Caching
 
-Set `dbCache: true` in `AppBase.init()` to enable in-memory caching for `list()` and `get()`. Cache is invalidated on `create`, `update`, and `delete` for the affected collection. Reduces redundant network requests when the same data is fetched repeatedly (e.g. from multiple components or after subscribe events).
+Set `dbCache: true` in `AppBase.init()` to enable in-memory caching for `list()` and `get()`. Cache is invalidated on `create`, `update`, and `delete` for the affected collection. Cache is namespaced by the current user (access token), so switching accounts never returns another user's cached data. Reduces redundant network requests when the same data is fetched repeatedly (e.g. from multiple components or after subscribe events).
 
 ---
 

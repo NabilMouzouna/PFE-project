@@ -62,8 +62,9 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (authState === null || !authenticated) return;
+    setTodos([]);
     void loadTodos();
-  }, [authState, authenticated, loadTodos]);
+  }, [authState, authenticated, loadTodos, user?.id]);
 
   const applyEvent = useCallback(
     (event: ChangeEvent<TodoData>) => {

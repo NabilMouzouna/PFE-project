@@ -70,12 +70,20 @@ export class CollectionRef<T extends Record<string, unknown>> {
     private headers: () => Record<string, string>,
     private schema?: ZodSchema<T>,
     private cache?: CollectionCache,
+    private getCacheScope?: () => string,
   ) {}
+
+  private cacheScope(): string {
+    return this.getCacheScope?.() ?? "";
+  }
 
   private invalidateCache(id?: string): void {
     if (!this.cache) return;
     this.cache.list.clear();
-    if (id) this.cache.records.delete(id);
+    if (id) {
+      const scope = this.cacheScope();
+      this.cache.records.delete(`${scope}:${id}`);
+    }
   }
 
   private async request<TRes>(
@@ -141,7 +149,8 @@ export class CollectionRef<T extends Record<string, unknown>> {
 
   /** List records. Options: limit, offset, filter (equality on data fields). */
   async list(options?: ListOptions): Promise<DbListResponse<T>> {
-    const cacheKey = this.cache ? cacheKeyForList(options) : null;
+    const scope = this.cacheScope();
+    const cacheKey = this.cache ? `${scope}:${cacheKeyForList(options)}` : null;
     if (cacheKey && this.cache) {
       const cached = this.cache.list.get(cacheKey) as DbListResponse<T> | undefined;
       if (cached) return cached;
@@ -167,8 +176,10 @@ export class CollectionRef<T extends Record<string, unknown>> {
 
   /** Get one record by id. Throws DbError with code NOT_FOUND if missing. */
   async get(id: string): Promise<DbRecord<T>> {
-    if (this.cache) {
-      const cached = this.cache.records.get(id) as DbRecord<T> | undefined;
+    const scope = this.cacheScope();
+    const cacheKey = this.cache ? `${scope}:${id}` : null;
+    if (cacheKey && this.cache) {
+      const cached = this.cache.records.get(cacheKey) as DbRecord<T> | undefined;
       if (cached) return cached;
     }
 
@@ -177,7 +188,7 @@ export class CollectionRef<T extends Record<string, unknown>> {
       `${this.name}/${encodeURIComponent(id)}`,
     );
     const record = this.recordFromApi(res!.data);
-    if (this.cache) this.cache.records.set(id, record as DbRecord<unknown>);
+    if (cacheKey && this.cache) this.cache.records.set(cacheKey, record as DbRecord<unknown>);
     return record;
   }
 
@@ -302,7 +313,8 @@ export class DbClient {
     schema?: ZodSchema<T>,
   ): CollectionRef<T> {
     const cache = this.getOrCreateCache(name);
-    return new CollectionRef<T>(name, this.baseUrl, () => this.headers(), schema, cache);
+    const getCacheScope = () => this.auth.getAccessToken() ?? "";
+    return new CollectionRef<T>(name, this.baseUrl, () => this.headers(), schema, cache, getCacheScope);
   }
 }
 
