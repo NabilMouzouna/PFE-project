@@ -32,6 +32,11 @@ export async function registerInfrastructure(app: FastifyInstance, env: AppEnv) 
         version: "0.1.0",
       },
       servers: [{ url: env.BASE_URL }],
+      tags: [
+        { name: "auth", description: "Registration, login, session, and tokens." },
+        { name: "database", description: "User-scoped collections and records (Bearer JWT)." },
+        { name: "system", description: "Operational and health endpoints." },
+      ],
       components: {
         securitySchemes: {
           bearerAuth: { type: "http", scheme: "bearer" },
