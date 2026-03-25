@@ -50,6 +50,13 @@
       "when": 1773954804206,
       "tag": "0006_jwks_updated_at_optional",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1774000000000,
+      "tag": "0007_files_checksum_versioning",
+      "breakpoints": true
     }
   ]
 }

@@ -261,6 +261,8 @@ If a self-service reset flow is introduced later, it will be added as a new publ
 }
 ```
 
+**M1 implementation notes:** File bytes are written by a `StorageDriver` (default: local filesystem under `STORAGE_ROOT`; production default `/app/data/storage` with a mounted volume per ADR-005). SQLite rows use opaque `storage_path` keys, plus `logical_file_id` and `version` for future metadata-based versioning (not filename suffix rules). Operator checklist: `docs/STORAGE-OPERATIONS.md`.
+
 ### 6.1 POST `/storage/buckets/:bucket/upload`
 
 Uploads a file to a bucket scoped to the authenticated user.

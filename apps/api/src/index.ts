@@ -30,7 +30,7 @@ async function main() {
 
   await app.listen({ host: env.HOST, port: env.PORT });
   app.log.info(
-    { host: env.HOST, port: env.PORT, dbPath: env.DB_PATH },
+    { host: env.HOST, port: env.PORT, dbPath: env.DB_PATH, storageRoot: env.storageRoot },
     "AppBase API started",
   );
 }

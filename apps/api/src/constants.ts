@@ -46,8 +46,8 @@ export const TEST_EXCLUDED_AUTH_POST_PATHS: readonly string[] = [
   "/auth/logout",
 ];
 
-/** In test: /db/* skips x-api-key so db integration tests run with JWT only. */
-export const TEST_EXCLUDED_API_KEY_PATHS: readonly string[] = ["/db/"];
+/** In test: /db/* and /storage/* skip x-api-key so integration tests run with JWT only. */
+export const TEST_EXCLUDED_API_KEY_PATHS: readonly string[] = ["/db/", "/storage/"];
 
 
 /** URL path prefixes that require a verified JWT access token. */

@@ -11,10 +11,12 @@
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "storage:reconcile": "tsx scripts/storage-reconcile.ts"
   },
   "dependencies": {
     "@appbase/db": "workspace:*",
+    "@appbase/storage": "workspace:*",
     "@appbase/types": "workspace:*",
     "drizzle-orm": "^0.45.1",
     "@better-auth/api-key": "^1.5.5",

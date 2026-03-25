@@ -10,7 +10,7 @@ In M1, this service is the core runtime for:
 - admin-facing management endpoints
 - OpenAPI documentation
 
-At the moment, this package is still in the scaffolding phase. The infrastructure is in place, but only the `/health` route is implemented.
+Core routes include `/health`, `/auth/*`, `/db/*`, `/storage/*`, and OpenAPI `/docs`.
 
 ## Current Responsibilities
 
@@ -38,9 +38,15 @@ src/
 │   └── not-found.ts       # 404 handling
 ├── plugins/
 │   ├── database.ts        # DB decoration and initialization
-│   └── infrastructure.ts  # CORS, multipart, Swagger, Swagger UI
+│   ├── auth.ts            # better-auth integration
+│   ├── infrastructure.ts  # CORS, multipart, Swagger, Swagger UI
+│   └── storage.ts         # StorageDriver + volume readiness
+├── storage/               # API wiring: factory, reconcile (shared driver: `@appbase/storage`)
 ├── routes/
 │   ├── health.ts          # /health route + OpenAPI schema
+│   ├── auth.ts
+│   ├── db.ts
+│   ├── storage.ts
 │   └── index.ts
 ├── types/
 │   └── fastify.d.ts       # Fastify instance decorations
@@ -55,6 +61,7 @@ Default runtime values:
 - `HOST=0.0.0.0`
 - `PORT=3000`
 - `DB_PATH=data/appbase.sqlite`
+- `STORAGE_ROOT` — development default `./data/storage`; production default `/app/data/storage` (use a volume)
 - `LOG_LEVEL=info`
 
 Optional / reserved values:

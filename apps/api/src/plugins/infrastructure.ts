@@ -24,7 +24,7 @@ export async function registerInfrastructure(app: FastifyInstance, env: AppEnv) 
       cb(new Error("CORS origin not allowed"), false);
     },
   });
-  await app.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
+  await app.register(multipart, { limits: { fileSize: env.storageMaxUploadBytes } });
   await app.register(swagger, {
     openapi: {
       info: {
@@ -35,6 +35,7 @@ export async function registerInfrastructure(app: FastifyInstance, env: AppEnv) 
       tags: [
         { name: "auth", description: "Registration, login, session, and tokens." },
         { name: "database", description: "User-scoped collections and records (Bearer JWT)." },
+        { name: "storage", description: "User-scoped file uploads and downloads (Bearer JWT)." },
         { name: "system", description: "Operational and health endpoints." },
       ],
       components: {
