@@ -16,6 +16,7 @@ export default function SignUpPage() {
   const { signUp } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [busy, setBusy] = useState(false);
   const [logs, setLogs] = useState<LogItem[]>([]);
 
@@ -29,7 +30,13 @@ export default function SignUpPage() {
     setBusy(true);
     push("Sign up started");
     try {
-      const res = await signUp({ email, password });
+      const res = await signUp({
+        email,
+        password,
+        ...(displayName.trim()
+          ? { customIdentity: { displayName: displayName.trim() } }
+          : {}),
+      });
       push(`Sign up success: ${res.user.email}`);
       push("Session active");
       router.push("/dashboard");
@@ -67,6 +74,17 @@ export default function SignUpPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="user@example.com"
             required
+          />
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span>Display name (optional)</span>
+          <input
+            className="app-input"
+            type="text"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            placeholder="How we greet you on your profile"
+            autoComplete="name"
           />
         </label>
         <label className="grid gap-1 text-sm">

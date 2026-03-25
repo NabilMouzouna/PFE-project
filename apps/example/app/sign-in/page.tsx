@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/appbase";
 
 type LogItem = { at: string; message: string };
@@ -11,8 +11,10 @@ function nowTime() {
   return new Date().toLocaleTimeString();
 }
 
-export default function SignInPage() {
+function SignInForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const configHint = searchParams.get("reason") === "config";
   const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -47,6 +49,21 @@ export default function SignInPage() {
       <section className="app-card p-6 md:p-8">
         <h1 className="text-4xl font-extrabold">Welcome back</h1>
         <p className="mt-2 text-sm opacity-75">Access your protected dashboard and manage todos.</p>
+        {configHint ? (
+          <div
+            className="mt-4 rounded-lg border-2 border-amber-600/50 bg-amber-500/10 px-3 py-3 text-sm text-amber-950 dark:text-amber-100"
+            role="status"
+          >
+            <p className="font-medium">Session was cleared</p>
+            <p className="mt-1 opacity-90">
+              The app could not use the API (for example after resetting the database, or if{" "}
+              <code className="rounded bg-(--panel) px-1 font-mono text-xs">NEXT_PUBLIC_APPBASE_API_KEY</code> no
+              longer matches the server). Create a new API key on the server, update your{" "}
+              <code className="rounded bg-(--panel) px-1 font-mono text-xs">.env</code>, restart the example app,
+              then sign in again.
+            </p>
+          </div>
+        ) : null}
         <div className="mt-4 flex gap-2">
           <Link className="rounded-lg border-2 border-var(--line) px-3 py-2" href="/">
             Home
@@ -100,5 +117,19 @@ export default function SignInPage() {
         </ul>
       </section>
     </main>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center p-6">
+          <p className="text-sm opacity-75">Loading…</p>
+        </main>
+      }
+    >
+      <SignInForm />
+    </Suspense>
   );
 }

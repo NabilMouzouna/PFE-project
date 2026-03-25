@@ -1,12 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { useAppBase, useAuth, useRequireAuth } from "@/lib/appbase";
+import { shouldClearSessionForApiError } from "@/lib/api-errors";
 import type { DbRecord } from "@appbase/sdk";
 import { Button, Input, Textarea, Modal, Badge, CardHeader } from "@/components/ui";
+import { ProfileModal } from "@/components/ProfileModal";
+import {
+  AVATAR_BUCKET,
+  ProfileRowSchema,
+  defaultDisplayName,
+  type ProfileData,
+} from "@/lib/profile-schema";
 
 const TodoSchema = z.object({
   title: z.string(),
@@ -22,12 +30,30 @@ type Todo = DbRecord<TodoData>;
 export default function DashboardPage() {
   const router = useRouter();
   const appBase = useAppBase();
-  const { signOut } = useAuth();
+  const { signOut, getCurrentUser } = useAuth();
+
+  const redirectToSignInAfterFatalApiError = useCallback(async () => {
+    try {
+      await signOut();
+    } catch {
+      /* still navigate */
+    }
+    router.replace("/sign-in?reason=config");
+  }, [signOut, router]);
   const { authState, authenticated, user } = useRequireAuth("/sign-in", router);
   const todosCollection = useMemo(
     () => appBase.db.collection<TodoData>("todos", TodoSchema),
     [appBase],
   );
+  const profilesCollection = useMemo(
+    () => appBase.db.collection<ProfileData>("profiles", ProfileRowSchema),
+    [appBase],
+  );
+
+  const navAvatarUrlRef = useRef<string | null>(null);
+  const [navAvatarUrl, setNavAvatarUrl] = useState<string | null>(null);
+  const [navAvatarLetter, setNavAvatarLetter] = useState("?");
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
 
   const [todos, setTodos] = useState<Todo[]>([]);
   const [title, setTitle] = useState("");
@@ -56,16 +82,76 @@ export default function DashboardPage() {
       });
       setTodos(res.items);
     } catch (err) {
+      if (shouldClearSessionForApiError(err)) {
+        await redirectToSignInAfterFatalApiError();
+        return;
+      }
       const msg = err instanceof Error ? err.message : "Failed to load todos";
       setError(msg);
     }
-  }, [todosCollection, filter]);
+  }, [todosCollection, filter, redirectToSignInAfterFatalApiError]);
 
   useEffect(() => {
     if (authState === null || !authenticated) return;
     setTodos([]);
     void loadTodos();
   }, [authState, authenticated, loadTodos, user?.id]);
+
+  const setNavAvatarUrlSafe = useCallback((next: string | null) => {
+    if (navAvatarUrlRef.current) {
+      URL.revokeObjectURL(navAvatarUrlRef.current);
+      navAvatarUrlRef.current = null;
+    }
+    if (next) navAvatarUrlRef.current = next;
+    setNavAvatarUrl(next);
+  }, []);
+
+  const refreshNavAvatar = useCallback(async () => {
+    if (!user?.email) return;
+    try {
+      const { items } = await profilesCollection.list({ limit: 1 });
+      const row = items[0];
+      const u = getCurrentUser();
+      const label =
+        row?.data.displayName ?? defaultDisplayName(user.email, u?.customIdentity ?? undefined);
+      setNavAvatarLetter(label.slice(0, 1).toUpperCase());
+      const fid = row?.data.avatarFileId;
+      if (!fid) {
+        setNavAvatarUrlSafe(null);
+        return;
+      }
+      const blob = (await appBase.storage.download(AVATAR_BUCKET, fid, { as: "blob" })) as Blob;
+      setNavAvatarUrlSafe(URL.createObjectURL(blob));
+    } catch (err) {
+      if (shouldClearSessionForApiError(err)) {
+        await redirectToSignInAfterFatalApiError();
+        return;
+      }
+      setNavAvatarLetter(user.email.slice(0, 1).toUpperCase());
+      setNavAvatarUrlSafe(null);
+    }
+  }, [
+    user?.email,
+    profilesCollection,
+    appBase.storage,
+    getCurrentUser,
+    setNavAvatarUrlSafe,
+    redirectToSignInAfterFatalApiError,
+  ]);
+
+  useEffect(() => {
+    if (!authenticated || !user?.email) return;
+    void refreshNavAvatar();
+  }, [authenticated, user?.email, user?.id, refreshNavAvatar]);
+
+  useEffect(() => {
+    return () => {
+      if (navAvatarUrlRef.current) {
+        URL.revokeObjectURL(navAvatarUrlRef.current);
+        navAvatarUrlRef.current = null;
+      }
+    };
+  }, []);
 
   const createTodo = async () => {
     if (!title.trim()) {
@@ -207,7 +293,21 @@ export default function DashboardPage() {
             <h1 className="mt-1 text-4xl font-extrabold">Todo Dashboard</h1>
             <p className="mt-2 text-sm opacity-75">Signed in as {userEmail}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setProfileModalOpen(true)}
+              className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full border-2 border-var(--line) bg-var(--panel) shadow-[2px_2px_0_var(--line)] transition hover:-translate-y-0.5 hover:shadow-[3px_3px_0_var(--line)] focus:outline-none focus:ring-2 focus:ring-var(--accent) focus:ring-offset-2"
+              aria-label="Open profile"
+            >
+              {navAvatarUrl ? (
+                <img src={navAvatarUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center text-sm font-bold text-var(--foreground)/80">
+                  {navAvatarLetter}
+                </span>
+              )}
+            </button>
             <Link
               className="rounded-lg border-2 border-var(--line) px-3 py-2 text-sm transition-colors hover:bg-var(--panel) focus:outline-none focus:ring-2 focus:ring-var(--accent)"
               href="/"
@@ -333,6 +433,12 @@ export default function DashboardPage() {
           </ul>
         )}
       </section>
+
+      <ProfileModal
+        isOpen={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+        onProfileChanged={() => void refreshNavAvatar()}
+      />
 
       <Modal
         isOpen={!!editingTodo}

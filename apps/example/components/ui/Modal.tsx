@@ -7,9 +7,11 @@ export interface ModalProps {
   onClose: () => void;
   title?: string;
   children: React.ReactNode;
+  /** Overrides default `max-w-lg` on the panel (e.g. `max-w-2xl`). */
+  panelClassName?: string;
 }
 
-export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, panelClassName }: ModalProps) {
   const handleEscape = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -43,7 +45,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
         aria-hidden="true"
       />
       <div
-        className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-auto rounded-xl border-2 border-var(--line) bg-var(--paper) p-6 shadow-[6px_6px_0_var(--line)]"
+        className={`relative z-10 max-h-[90vh] w-full overflow-auto rounded-xl border-2 border-var(--line) bg-var(--paper) p-6 shadow-[6px_6px_0_var(--line)] ${panelClassName ?? "max-w-lg"}`}
         onClick={(e) => e.stopPropagation()}
       >
         {title && (
