@@ -330,6 +330,8 @@ export async function registerStorageRoutes(app: FastifyInstance) {
       }
 
       const row = rows[0]!;
+      // M1: not transactional across DB + FS. Row removed first so the API never leaves metadata
+      // pointing at missing objects; failed disk delete → orphan bytes (reconcile + manual GC).
       await app.db.delete(files).where(and(eq(files.id, fileId), eq(files.ownerId, userId)));
       await driver.deleteObject(row.storagePath).catch((err) => {
         request.log.warn({ err, storagePath: row.storagePath }, "storage.delete.object_cleanup_failed");

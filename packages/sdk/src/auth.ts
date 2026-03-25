@@ -253,4 +253,25 @@ export class AuthClient {
   getAccessToken(): string | null {
     return this.session?.accessToken ?? null;
   }
+
+  /**
+   * Ensures a usable access JWT for protected API routes (`/storage/*`, `/db/*`).
+   * Runs the startup restore hook, then refreshes via session cookie when the token is near expiry.
+   */
+  ensureAccessToken = async (): Promise<string> => {
+    await this.initPromise;
+    if (!this.session) {
+      throw new Error(
+        "Not authenticated. Call auth.signIn or auth.signUp before storage or database operations.",
+      );
+    }
+    if (this.isAccessTokenStale()) {
+      await this.refreshAccessToken();
+    }
+    const token = this.session.accessToken;
+    if (!token) {
+      throw new Error("No access token available.");
+    }
+    return token;
+  };
 }

@@ -26,4 +26,4 @@ const { items } = await todos.list();
 |---------|--------|
 | **`appbase.auth`** | [Auth docs](./docs/auth-service.md) |
 | **`appbase.db`** | [Database docs](./docs/db-service.md) |
-| **`appbase.storage`** | Placeholder |
+| **`appbase.storage`** | [Storage docs](./docs/storage-service.md) |
