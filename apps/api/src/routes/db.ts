@@ -106,6 +106,204 @@ function parseFilter(filterStr: string | undefined): Record<string, unknown> | n
   }
 }
 
+const dbApiErrorSchema = {
+  type: "object",
+  properties: {
+    success: { type: "boolean", const: false },
+    error: {
+      type: "object",
+      properties: { code: { type: "string" }, message: { type: "string" } },
+      required: ["code", "message"],
+    },
+  },
+  required: ["success", "error"],
+} as const;
+
+const dbRecordSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+    collection: { type: "string" },
+    ownerId: { type: "string" },
+    data: { type: "object", additionalProperties: true },
+    createdAt: { type: "string", format: "date-time" },
+    updatedAt: { type: "string", format: "date-time" },
+  },
+  required: ["id", "collection", "ownerId", "data", "createdAt", "updatedAt"],
+} as const;
+
+const collectionParamsSchema = {
+  type: "object",
+  required: ["collection"],
+  properties: {
+    collection: {
+      type: "string",
+      description: "Collection name (letters, digits, hyphens, underscores; max 64).",
+    },
+  },
+} as const;
+
+const collectionIdParamsSchema = {
+  type: "object",
+  required: ["collection", "id"],
+  properties: {
+    collection: {
+      type: "string",
+      description: "Collection name (letters, digits, hyphens, underscores; max 64).",
+    },
+    id: { type: "string", description: "Record id." },
+  },
+} as const;
+
+const dbSecurityBearer = [{ bearerAuth: [] }] as const;
+
+const dbPostCreateOpenApi = {
+  tags: ["database"],
+  summary: "Create record",
+  description: "Insert a JSON document into a user-scoped collection.",
+  security: dbSecurityBearer,
+  params: collectionParamsSchema,
+  body: {
+    type: "object",
+    properties: {
+      data: { type: "object", additionalProperties: true, description: "JSON object to store (required by API)." },
+    },
+  },
+  response: {
+    201: {
+      type: "object",
+      properties: {
+        success: { type: "boolean", const: true },
+        data: dbRecordSchema,
+      },
+      required: ["success", "data"],
+    },
+    400: dbApiErrorSchema,
+    401: dbApiErrorSchema,
+    500: dbApiErrorSchema,
+  },
+} as const;
+
+const dbGetListOpenApi = {
+  tags: ["database"],
+  summary: "List records",
+  description: "Paginated list of records in a collection, with optional JSON filter on top-level data keys.",
+  security: dbSecurityBearer,
+  params: collectionParamsSchema,
+  querystring: {
+    type: "object",
+    properties: {
+      limit: { type: "string", description: "Page size (1–100, default 50)." },
+      offset: { type: "string", description: "Offset for pagination." },
+      filter: { type: "string", description: "URL-encoded JSON object of field equality filters." },
+    },
+  },
+  response: {
+    200: {
+      type: "object",
+      properties: {
+        success: { type: "boolean", const: true },
+        data: {
+          type: "object",
+          properties: {
+            items: { type: "array", items: dbRecordSchema },
+            total: { type: "integer" },
+          },
+          required: ["items", "total"],
+        },
+      },
+      required: ["success", "data"],
+    },
+    400: dbApiErrorSchema,
+    401: dbApiErrorSchema,
+  },
+} as const;
+
+const dbSubscribeOpenApi = {
+  tags: ["database"],
+  summary: "Subscribe to collection changes",
+  description: "Server-Sent Events stream of created, updated, and deleted records for this collection.",
+  security: dbSecurityBearer,
+  params: collectionParamsSchema,
+  response: {
+    200: {
+      description: "Event stream (text/event-stream).",
+      type: "string",
+    },
+    400: dbApiErrorSchema,
+    401: dbApiErrorSchema,
+  },
+} as const;
+
+const dbGetOneOpenApi = {
+  tags: ["database"],
+  summary: "Get record",
+  description: "Fetch a single record by collection and id.",
+  security: dbSecurityBearer,
+  params: collectionIdParamsSchema,
+  response: {
+    200: {
+      type: "object",
+      properties: {
+        success: { type: "boolean", const: true },
+        data: dbRecordSchema,
+      },
+      required: ["success", "data"],
+    },
+    400: dbApiErrorSchema,
+    401: dbApiErrorSchema,
+    404: dbApiErrorSchema,
+  },
+} as const;
+
+const dbPutUpdateOpenApi = {
+  tags: ["database"],
+  summary: "Update record",
+  description: "Replace stored JSON data for a record.",
+  security: dbSecurityBearer,
+  params: collectionIdParamsSchema,
+  body: {
+    type: "object",
+    properties: {
+      data: { type: "object", additionalProperties: true, description: "JSON object to store (required by API)." },
+    },
+  },
+  response: {
+    200: {
+      type: "object",
+      properties: {
+        success: { type: "boolean", const: true },
+        data: dbRecordSchema,
+      },
+      required: ["success", "data"],
+    },
+    400: dbApiErrorSchema,
+    401: dbApiErrorSchema,
+    404: dbApiErrorSchema,
+  },
+} as const;
+
+const dbDeleteOpenApi = {
+  tags: ["database"],
+  summary: "Delete record",
+  description: "Remove a record from a collection.",
+  security: dbSecurityBearer,
+  params: collectionIdParamsSchema,
+  response: {
+    200: {
+      type: "object",
+      properties: {
+        success: { type: "boolean", const: true },
+        data: { type: "object", properties: { deleted: { type: "boolean", const: true } }, required: ["deleted"] },
+      },
+      required: ["success", "data"],
+    },
+    400: dbApiErrorSchema,
+    401: dbApiErrorSchema,
+    404: dbApiErrorSchema,
+  },
+} as const;
+
 export async function registerDbRoutes(app: FastifyInstance) {
   await app.register(
     async (instance) => {
@@ -117,7 +315,7 @@ export async function registerDbRoutes(app: FastifyInstance) {
       instance.post<{
         Params: { collection: string };
         Body: { data?: unknown };
-      }>("/collections/:collection", async (request, reply) => {
+      }>("/collections/:collection", { schema: dbPostCreateOpenApi }, async (request, reply) => {
         const userId = requireUserId(request);
         if (!userId) {
           return reply.status(401).send(apiError("INVALID_TOKEN", "The provided access token is invalid or expired."));
@@ -182,7 +380,10 @@ export async function registerDbRoutes(app: FastifyInstance) {
       });
 
       // GET /db/collections/:collection/subscribe — must be before :id
-      instance.get<{ Params: { collection: string } }>("/collections/:collection/subscribe", async (request, reply) => {
+      instance.get<{ Params: { collection: string } }>(
+        "/collections/:collection/subscribe",
+        { schema: dbSubscribeOpenApi },
+        async (request, reply) => {
         const userId = requireUserId(request);
         if (!userId) {
           return reply.status(401).send(apiError("INVALID_TOKEN", "The provided access token is invalid or expired."));
@@ -219,7 +420,7 @@ export async function registerDbRoutes(app: FastifyInstance) {
       instance.get<{
         Params: { collection: string };
         Querystring: { limit?: string; offset?: string; filter?: string };
-      }>("/collections/:collection", async (request, reply) => {
+      }>("/collections/:collection", { schema: dbGetListOpenApi }, async (request, reply) => {
         const userId = requireUserId(request);
         if (!userId) {
           return reply.status(401).send(apiError("INVALID_TOKEN", "The provided access token is invalid or expired."));
@@ -296,7 +497,7 @@ export async function registerDbRoutes(app: FastifyInstance) {
       instance.put<{
         Params: { collection: string; id: string };
         Body: { data?: unknown };
-      }>("/collections/:collection/:id", async (request, reply) => {
+      }>("/collections/:collection/:id", { schema: dbPutUpdateOpenApi }, async (request, reply) => {
         const userId = requireUserId(request);
         if (!userId) {
           return reply.status(401).send(apiError("INVALID_TOKEN", "The provided access token is invalid or expired."));
@@ -363,6 +564,7 @@ export async function registerDbRoutes(app: FastifyInstance) {
       // DELETE /db/collections/:collection/:id
       instance.delete<{ Params: { collection: string; id: string } }>(
         "/collections/:collection/:id",
+        { schema: dbDeleteOpenApi },
         async (request, reply) => {
           const userId = requireUserId(request);
           if (!userId) {
