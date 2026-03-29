@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "create-api-key": "tsx scripts/create-dev-api-key.ts",
+    "promote-operator-admin": "tsx scripts/promote-operator-admin.ts",
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",

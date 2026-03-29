@@ -37,6 +37,7 @@ export async function registerInfrastructure(app: FastifyInstance, env: AppEnv) 
         { name: "database", description: "User-scoped collections and records (Bearer JWT)." },
         { name: "storage", description: "User-scoped file uploads and downloads (Bearer JWT)." },
         { name: "system", description: "Operational and health endpoints." },
+        { name: "admin", description: "Instance operator endpoints (x-api-key only)." },
       ],
       components: {
         securitySchemes: {

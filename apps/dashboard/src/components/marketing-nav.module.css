@@ -1,0 +1,125 @@
+.outer {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  width: 100%;
+  padding: 10px clamp(0.75rem, 4vw, 2rem) 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.outer > .bar {
+  pointer-events: auto;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  width: min(1200px, max(80vw, 92vw));
+  max-width: 100%;
+  border-radius: 999px;
+  backdrop-filter: blur(14px);
+  background: rgba(253, 252, 248, 0.92);
+  border: 1px solid rgba(27, 42, 74, 0.08);
+  box-shadow: 0 4px 24px rgba(27, 42, 74, 0.06);
+}
+
+.brand {
+  font-family: var(--font-appbase-display), Georgia, serif;
+  font-weight: 700;
+  font-size: 1.125rem;
+  color: var(--landing-ink, #1b2a4a);
+  text-decoration: none;
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+}
+
+.brand:hover {
+  text-decoration: none;
+  opacity: 0.85;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem 0.75rem;
+}
+
+.links .docLink {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--landing-muted, #4b5563);
+  text-decoration: none;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.links .docLink:hover {
+  color: var(--landing-ink, #1b2a4a);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  background: var(--landing-ink, #1b2a4a);
+  color: #fff !important;
+  text-decoration: none;
+  transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 2px 12px rgba(27, 42, 74, 0.18);
+}
+
+.cta:hover {
+  opacity: 0.94;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(27, 42, 74, 0.22);
+  color: #fff !important;
+  text-decoration: none;
+}
+
+.ctaGhost {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  background: transparent;
+  color: var(--landing-ink, #1b2a4a) !important;
+  border: 2px solid rgba(27, 42, 74, 0.14);
+  text-decoration: none;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.ctaGhost:hover {
+  background: rgba(255, 255, 255, 0.85);
+  transform: translateY(-1px);
+  color: var(--landing-ink, #1b2a4a) !important;
+  text-decoration: none;
+}
+
+@media (max-width: 480px) {
+  .bar {
+    width: min(100%, 94vw);
+    padding: 0.65rem 1rem;
+    border-radius: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .links .docLink:hover,
+  .cta:hover,
+  .ctaGhost:hover {
+    transform: none;
+  }
+}

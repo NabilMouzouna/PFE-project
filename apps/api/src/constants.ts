@@ -36,6 +36,9 @@ export const HEALTH_PATH = "/health";
 /** Skipped by API key middleware: OpenAPI / Swagger UI. */
 export const DOCS_PATH_PREFIX = "/docs";
 
+/** Skipped by API key middleware: first-operator bootstrap (guarded by bootstrap secret + DB check). */
+export const BOOTSTRAP_FIRST_OPERATOR_PATH = "/bootstrap/first-operator";
+
 /**
  * In `NODE_ENV=test`, these POST paths skip `x-api-key` so auth integration tests run without a key.
  */

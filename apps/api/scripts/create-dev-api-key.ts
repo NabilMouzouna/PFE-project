@@ -11,6 +11,7 @@ import { createDb } from "@appbase/db";
 import * as schema from "@appbase/db/schema";
 import { createAuth } from "../src/lib/auth";
 import { loadEnv } from "../src/config/env";
+import { API_KEY_INSTANCE_USER_ID } from "../src/constants/bootstrap-user";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 loadDotenv({ path: path.resolve(__dirname, "../.env"), quiet: true });
@@ -18,15 +19,13 @@ loadDotenv({ path: path.resolve(__dirname, "../.env"), quiet: true });
 const env = loadEnv(process.env);
 const db = createDb(env.DB_PATH);
 
-const APP_USER_ID = "app-default-bootstrap";
-
 async function ensureBootstrapUser() {
   const users = await db.select().from(schema.user);
-  if (users.some((u) => u.id === APP_USER_ID)) return;
+  if (users.some((u) => u.id === API_KEY_INSTANCE_USER_ID)) return;
 
   const now = new Date();
   await db.insert(schema.user).values({
-    id: APP_USER_ID,
+    id: API_KEY_INSTANCE_USER_ID,
     name: "App Bootstrap",
     email: "bootstrap@appbase.local",
     emailVerified: false,
@@ -42,8 +41,7 @@ async function main() {
   const result = await auth.api.createApiKey({
     body: {
       name: "dev-api-key",
-      userId: APP_USER_ID,
-      expiresIn: 60 * 60 * 24 * 365, // 1 year
+      userId: API_KEY_INSTANCE_USER_ID,
     },
   });
 

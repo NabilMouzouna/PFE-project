@@ -3,6 +3,7 @@ import {
   API_ERROR_CODES,
   API_ERROR_MESSAGES,
   AUTH_INTERNAL_PATHS,
+  BOOTSTRAP_FIRST_OPERATOR_PATH,
   DOCS_PATH_PREFIX,
   HEALTH_PATH,
   TEST_EXCLUDED_API_KEY_PATHS,
@@ -13,6 +14,7 @@ function isExcluded(method: string, path: string, nodeEnv: string, devSkipApiKey
   const p = path.split("?")[0] ?? "/";
   if (method === "OPTIONS") return true; // CORS preflight; browser omits credentials
   if (method === "GET" && (p === HEALTH_PATH || p.startsWith(DOCS_PATH_PREFIX))) return true;
+  if (method === "POST" && p === BOOTSTRAP_FIRST_OPERATOR_PATH) return true;
 
   const relaxApiKey =
     nodeEnv === "test" || (nodeEnv === "development" && devSkipApiKey);

@@ -34,6 +34,8 @@ const envSchema = z.object({
     .string()
     .min(32, "AUTH_SECRET must be at least 32 characters")
     .optional(),
+  /** When set, dev requires matching `x-appbase-bootstrap-secret`; production requires it for bootstrap. */
+  APPBASE_BOOTSTRAP_SECRET: z.string().optional(),
 });
 
 type ParsedEnv = z.output<typeof envSchema>;
@@ -47,10 +49,18 @@ export type StorageEnv = {
 
 export type AppEnv = Omit<
   ParsedEnv,
-  "BASE_URL" | "AUTH_SECRET" | "CORS_ORIGINS" | "STORAGE_ROOT" | "STORAGE_MAX_UPLOAD_BYTES" | "STORAGE_ALLOWED_MIME"
+  | "BASE_URL"
+  | "AUTH_SECRET"
+  | "CORS_ORIGINS"
+  | "STORAGE_ROOT"
+  | "STORAGE_MAX_UPLOAD_BYTES"
+  | "STORAGE_ALLOWED_MIME"
+  | "APPBASE_BOOTSTRAP_SECRET"
 > & {
   BASE_URL: string;
   AUTH_SECRET: string;
+  /** Null when unset — dev allows bootstrap without header; prod requires secret + header. */
+  bootstrapSecret: string | null;
   corsAllowedOrigins: string[];
   /**
    * `NODE_ENV=development` + `DEV_SKIP_API_KEY=true`: same x-api-key bypass as Vitest (auth POST paths,
@@ -106,6 +116,7 @@ export function loadEnv(source: NodeJS.ProcessEnv): AppEnv {
     STORAGE_ROOT,
     STORAGE_MAX_UPLOAD_BYTES,
     STORAGE_ALLOWED_MIME,
+    APPBASE_BOOTSTRAP_SECRET,
     DB_PATH: dbPathRaw,
     ...rest
   } = parsed;
@@ -144,11 +155,17 @@ export function loadEnv(source: NodeJS.ProcessEnv): AppEnv {
   }
   const devSkipApiKey = parsed.NODE_ENV === "development" && devSkipApiKeyRequested;
 
+  const bootstrapSecret =
+    APPBASE_BOOTSTRAP_SECRET != null && APPBASE_BOOTSTRAP_SECRET.trim().length > 0
+      ? APPBASE_BOOTSTRAP_SECRET.trim()
+      : null;
+
   return {
     ...rest,
     DB_PATH: dbPath,
     BASE_URL: baseUrl,
     AUTH_SECRET: authSecret ?? "dev-secret-min-32-chars-required-for-auth",
+    bootstrapSecret,
     corsAllowedOrigins: buildCorsAllowedOrigins(CORS_ORIGINS, baseUrl),
     storageRoot,
     storageMaxUploadBytes,

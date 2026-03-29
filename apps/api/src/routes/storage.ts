@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import { eq, and, count } from "drizzle-orm";
 import { files } from "@appbase/db/schema";
 import { validateBucket, isMimeAllowed } from "@appbase/storage";
+import { ensureStorageRootReady } from "../utils/filesystem";
 
 function apiSuccess<T>(data: T) {
   return { success: true as const, data };
@@ -185,6 +186,7 @@ export async function registerStorageRoutes(app: FastifyInstance) {
 
     let putResult: { size: number; checksum: string };
     try {
+      ensureStorageRootReady(cfg.storageRoot);
       putResult = await driver.putObject({ objectKey: storagePath, stream: file.file });
     } catch (err) {
       request.log.error({ err }, "storage.upload.putObject failed");

@@ -1,0 +1,226 @@
+.page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f5f1e8 0%, #fdfcf8 40%, #f0ebe3 100%);
+  color: #1b2a4a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.shell {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 3rem) clamp(1.25rem, 4vw, 2rem) 4rem;
+}
+
+.hero {
+  margin-bottom: 2.5rem;
+}
+
+.hero h1 {
+  font-family: var(--font-appbase-display), Georgia, serif;
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 700;
+  margin: 0 0 0.75rem;
+  letter-spacing: -0.02em;
+}
+
+.hero p {
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  color: #5c6370;
+}
+
+.placeholderPill {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(234, 179, 8, 0.35);
+  color: #1b2a4a;
+}
+
+.toc {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 2.5rem;
+  border: 1px solid rgba(27, 42, 74, 0.08);
+  box-shadow: 0 4px 20px rgba(27, 42, 74, 0.05);
+}
+
+.toc h2 {
+  margin: 0 0 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+}
+
+.toc ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.toc li {
+  margin-bottom: 0.5rem;
+}
+
+.toc a {
+  font-weight: 600;
+  color: #2db5a8;
+  text-decoration: none;
+  transition: color 0.2s ease, transform 0.2s ease;
+  display: inline-block;
+}
+
+.toc a:hover {
+  color: #1b2a4a;
+  transform: translateX(3px);
+  text-decoration: none;
+}
+
+.section {
+  opacity: 0;
+  animation: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  margin-bottom: 2.5rem;
+  padding: 1.5rem 1.75rem;
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid rgba(27, 42, 74, 0.07);
+  box-shadow: 0 4px 24px rgba(27, 42, 74, 0.04);
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.section:hover {
+  box-shadow: 0 8px 32px rgba(27, 42, 74, 0.08);
+  transform: translateY(-2px);
+}
+
+.s1 {
+  animation-delay: 0.05s;
+}
+.s2 {
+  animation-delay: 0.1s;
+}
+.s3 {
+  animation-delay: 0.15s;
+}
+.s4 {
+  animation-delay: 0.2s;
+}
+.s5 {
+  animation-delay: 0.25s;
+}
+
+.section h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid rgba(45, 181, 168, 0.35);
+}
+
+.section p,
+.section li {
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: #4b5563;
+}
+
+.section ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.section code {
+  font-size: 0.85em;
+  background: #f3f4f6;
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+}
+
+.cta {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  text-align: center;
+  background: #1b2a4a;
+  color: #fff;
+  border-radius: 14px;
+}
+
+.cta p {
+  margin: 0 0 1rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.9375rem;
+}
+
+.ctaLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.ctaBtnPrimary {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.65rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-decoration: none;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  background: #fff;
+  color: #1b2a4a;
+}
+
+.ctaBtnPrimary:hover {
+  transform: translateY(-2px);
+  opacity: 0.95;
+  text-decoration: none;
+  color: #1b2a4a;
+}
+
+.ctaBtnGhost {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.65rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-decoration: none;
+  transition: transform 0.2s ease, opacity 0.2s ease, background 0.2s ease;
+  background: transparent;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+}
+
+.ctaBtnGhost:hover {
+  transform: translateY(-2px);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  text-decoration: none;
+}
