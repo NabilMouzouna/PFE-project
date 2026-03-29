@@ -23,4 +23,12 @@ export async function registerStorage(app: FastifyInstance, env: AppEnv) {
 
   const driver = createStorageDriver(env);
   app.decorate("storageDriver", driver);
+
+  app.log.info(
+    {
+      storageRoot: env.storageRoot,
+      storageRootResolved: path.resolve(env.storageRoot),
+    },
+    "storage.driver.ready",
+  );
 }

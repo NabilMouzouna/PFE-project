@@ -6,6 +6,8 @@ Auth for AppBase — simple. Session lives in an HttpOnly cookie; the access tok
 
 ## Quick start
 
+**Headers:** `signIn`, `signUp`, `signOut`, and `refresh` all send **`x-api-key`** from `AppBase.init({ apiKey })`, same as `auth.http`. On the API, **`NODE_ENV=development`** normally requires a key registered in the DB (`pnpm --filter api create-api-key`). **`NODE_ENV=test`** (Vitest) skips API-key checks on `/auth/*`, `/db/*`, and `/storage/*`. For a **local dev server** with `NODE_ENV=development`, you can set **`DEV_SKIP_API_KEY=true`** in `apps/api/.env` to get the same bypass (development only; never in production).
+
 ```ts
 import { AppBase } from "@appbase/sdk";
 

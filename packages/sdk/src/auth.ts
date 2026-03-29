@@ -69,8 +69,11 @@ export class AuthClient {
     return this.config.sessionStorageKey;
   }
 
+  /** All `/auth/*` routes require `x-api-key` (same as `auth.http` and API-SPEC). */
   private authFetch(init: RequestInit): RequestInit {
-    return { ...init, credentials: "include" };
+    const headers = new Headers(init.headers ?? undefined);
+    headers.set("x-api-key", this.config.apiKey);
+    return { ...init, headers, credentials: "include" };
   }
 
   private setSessionFromLogin(data: Session, issuedAt: number): void {
@@ -222,6 +225,21 @@ export class AuthClient {
       return { authenticated: false, user: null };
     }
     return { authenticated: true, user: { id: s.user.id, email: s.user.email } };
+  };
+
+  /**
+   * Full user row from the session (email, timestamps, `customIdentity`), when the access token is valid.
+   * Use for profile UI; prefer {@link getAuthState} for minimal `{ id, email }` checks.
+   */
+  getCurrentUser = (): User | null => {
+    const s = this.session;
+    if (!s?.user?.id || typeof s.user.email !== "string" || s.user.email.length === 0) {
+      return null;
+    }
+    if (this.isAccessTokenStale()) {
+      return null;
+    }
+    return s.user;
   };
 
   /** Resolves when the startup check (restore + optional refresh) is done. Use before gating protected routes. */

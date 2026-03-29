@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { FastifyInstance } from "fastify";
 import { nanoid } from "nanoid";
 import { eq, and, count } from "drizzle-orm";
@@ -211,7 +212,19 @@ export async function registerStorageRoutes(app: FastifyInstance) {
     });
 
     const url = `/storage/buckets/${bucket}/${id}`;
-    request.log.info({ bucket, id, size: putResult.size, userId }, "storage.upload");
+    request.log.info(
+      {
+        bucket,
+        id,
+        size: putResult.size,
+        userId,
+        storageRoot: cfg.storageRoot,
+        storagePath,
+        objectAbsolutePath: path.join(cfg.storageRoot, storagePath),
+        checksum: putResult.checksum,
+      },
+      "storage.upload",
+    );
 
     return reply.status(201).send(
       apiSuccess({
@@ -255,7 +268,7 @@ export async function registerStorageRoutes(app: FastifyInstance) {
     ]);
 
     const total = totalResult[0]?.count ?? 0;
-    request.log.info({ bucket, total, userId }, "storage.list");
+    request.log.info({ bucket, total, userId, storageRoot: cfg.storageRoot }, "storage.list");
 
     return reply.send(apiSuccess({ files: rows.map(toFileRecord), total }));
   });
@@ -290,11 +303,33 @@ export async function registerStorageRoutes(app: FastifyInstance) {
       }
 
       const row = rows[0]!;
+      const objectAbsolutePath = path.join(cfg.storageRoot, row.storagePath);
       if (!(await driver.exists(row.storagePath))) {
+        request.log.warn(
+          {
+            bucket,
+            fileId,
+            userId,
+            storageRoot: cfg.storageRoot,
+            storagePath: row.storagePath,
+            objectAbsolutePath,
+          },
+          "storage.download.object_missing_on_disk",
+        );
         return reply.status(404).send(apiError("NOT_FOUND", "File data is missing"));
       }
 
-      request.log.info({ bucket, fileId, userId }, "storage.download");
+      request.log.info(
+        {
+          bucket,
+          fileId,
+          userId,
+          storageRoot: cfg.storageRoot,
+          storagePath: row.storagePath,
+          objectAbsolutePath,
+        },
+        "storage.download",
+      );
       const stream = driver.getObjectStream(row.storagePath);
       return reply.header("Content-Type", row.mimeType).send(stream);
     },
@@ -334,10 +369,23 @@ export async function registerStorageRoutes(app: FastifyInstance) {
       // pointing at missing objects; failed disk delete → orphan bytes (reconcile + manual GC).
       await app.db.delete(files).where(and(eq(files.id, fileId), eq(files.ownerId, userId)));
       await driver.deleteObject(row.storagePath).catch((err) => {
-        request.log.warn({ err, storagePath: row.storagePath }, "storage.delete.object_cleanup_failed");
+        request.log.warn(
+          { err, storagePath: row.storagePath, objectAbsolutePath: path.join(cfg.storageRoot, row.storagePath) },
+          "storage.delete.object_cleanup_failed",
+        );
       });
 
-      request.log.info({ bucket, fileId, userId }, "storage.delete");
+      request.log.info(
+        {
+          bucket,
+          fileId,
+          userId,
+          storageRoot: cfg.storageRoot,
+          storagePath: row.storagePath,
+          objectAbsolutePath: path.join(cfg.storageRoot, row.storagePath),
+        },
+        "storage.delete",
+      );
       return reply.send(apiSuccess({ deleted: true }));
     },
   );

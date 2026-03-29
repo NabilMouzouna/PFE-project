@@ -9,16 +9,17 @@ import {
   TEST_EXCLUDED_AUTH_POST_PATHS,
 } from "../constants";
 
-function isExcluded(method: string, path: string, nodeEnv: string): boolean {
+function isExcluded(method: string, path: string, nodeEnv: string, devSkipApiKey: boolean): boolean {
   const p = path.split("?")[0] ?? "/";
   if (method === "OPTIONS") return true; // CORS preflight; browser omits credentials
   if (method === "GET" && (p === HEALTH_PATH || p.startsWith(DOCS_PATH_PREFIX))) return true;
-  // In test: auth is public so tests can run without seeding API keys
-  if (nodeEnv === "test" && method === "POST" && TEST_EXCLUDED_AUTH_POST_PATHS.includes(p))
-    return true;
-  if (nodeEnv === "test" && p.startsWith(AUTH_INTERNAL_PATHS.apiPrefix)) return true;
-  if (nodeEnv === "test" && TEST_EXCLUDED_API_KEY_PATHS.some((prefix) => p.startsWith(prefix)))
-    return true;
+
+  const relaxApiKey =
+    nodeEnv === "test" || (nodeEnv === "development" && devSkipApiKey);
+
+  if (relaxApiKey && method === "POST" && TEST_EXCLUDED_AUTH_POST_PATHS.includes(p)) return true;
+  if (relaxApiKey && p.startsWith(AUTH_INTERNAL_PATHS.apiPrefix)) return true;
+  if (relaxApiKey && TEST_EXCLUDED_API_KEY_PATHS.some((prefix) => p.startsWith(prefix))) return true;
   return false;
 }
 
@@ -27,7 +28,8 @@ export async function apiKeyMiddleware(
   reply: FastifyReply,
 ): Promise<void> {
   const path = request.url?.split("?")[0] ?? "/";
-  if (isExcluded(request.method, path, request.server.config.NODE_ENV)) {
+  const cfg = request.server.config;
+  if (isExcluded(request.method, path, cfg.NODE_ENV, cfg.devSkipApiKey)) {
     return;
   }
 

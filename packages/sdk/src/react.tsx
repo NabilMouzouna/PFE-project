@@ -55,6 +55,7 @@ export function useAuth(): {
   signOut: AppBase["auth"]["signOut"];
   signUp: AppBase["auth"]["signUp"];
   getCustomIdentity: AppBase["auth"]["getCustomIdentity"];
+  getCurrentUser: AppBase["auth"]["getCurrentUser"];
 } {
   const value = useContext(AppBaseContext);
   if (!value) throw new Error("useAuth must be used inside <AppBaseProvider>");
@@ -65,6 +66,7 @@ export function useAuth(): {
     signOut: appBase.auth.signOut,
     signUp: appBase.auth.signUp,
     getCustomIdentity: appBase.auth.getCustomIdentity,
+    getCurrentUser: appBase.auth.getCurrentUser,
   };
 }
 

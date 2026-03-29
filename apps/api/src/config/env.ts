@@ -1,14 +1,19 @@
 import path from "node:path";
 import os from "node:os";
+import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
+
+/** `apps/api` — stable base for `data/storage` (avoids `process.cwd()` when turbo/root runs dev). */
+const API_PACKAGE_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   HOST: z.string().min(1).default("0.0.0.0"),
   PORT: z.coerce.number().int().positive().default(3000),
+  /** Relative paths resolved against `apps/api` (same as `STORAGE_ROOT`). */
   DB_PATH: z.string().min(1).default("data/appbase.sqlite"),
-  /** Absolute or relative path; default `/app/data/storage` in production, else `<cwd>/data/storage`. */
+  /** Absolute or relative to `apps/api`; default production `/app/data/storage`, else `apps/api/data/storage`. */
   STORAGE_ROOT: z.string().optional(),
   /** Max upload size in bytes (multipart / storage enforcement). Default 50 MiB. */
   STORAGE_MAX_UPLOAD_BYTES: z.coerce.number().int().positive().optional(),
@@ -47,7 +52,18 @@ export type AppEnv = Omit<
   BASE_URL: string;
   AUTH_SECRET: string;
   corsAllowedOrigins: string[];
+  /**
+   * `NODE_ENV=development` + `DEV_SKIP_API_KEY=true`: same x-api-key bypass as Vitest (auth POST paths,
+   * `/api/auth/*`, `/db/`, `/storage/`). Never use in production.
+   */
+  devSkipApiKey: boolean;
 } & StorageEnv;
+
+function envFlagTrue(value: string | undefined): boolean {
+  if (value == null || value === "") return false;
+  const v = value.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
 
 function buildCorsAllowedOrigins(corsOriginsEnv: string | undefined, baseUrl: string): string[] {
   const fromEnv =
@@ -85,18 +101,36 @@ export function loadEnv(source: NodeJS.ProcessEnv): AppEnv {
   }
 
   const baseUrl = parsed.BASE_URL ?? `http://${publicHost}:${parsed.PORT}`;
-  const { CORS_ORIGINS, STORAGE_ROOT, STORAGE_MAX_UPLOAD_BYTES, STORAGE_ALLOWED_MIME, ...rest } = parsed;
+  const {
+    CORS_ORIGINS,
+    STORAGE_ROOT,
+    STORAGE_MAX_UPLOAD_BYTES,
+    STORAGE_ALLOWED_MIME,
+    DB_PATH: dbPathRaw,
+    ...rest
+  } = parsed;
 
+  const dbPath =
+    dbPathRaw === ":memory:" || dbPathRaw.startsWith("file:")
+      ? dbPathRaw
+      : path.isAbsolute(dbPathRaw)
+        ? dbPathRaw
+        : path.resolve(API_PACKAGE_ROOT, dbPathRaw);
+
+  /**
+   * Isolated tmp dirs only under Vitest (`VITEST=true`). Using `NODE_ENV=test` for a dev server
+   * would otherwise put bytes in /tmp and leave `apps/api/data/storage` empty.
+   */
   const storageRoot =
     STORAGE_ROOT && STORAGE_ROOT.length > 0
       ? path.isAbsolute(STORAGE_ROOT)
         ? STORAGE_ROOT
-        : path.resolve(process.cwd(), STORAGE_ROOT)
+        : path.resolve(API_PACKAGE_ROOT, STORAGE_ROOT)
       : parsed.NODE_ENV === "production"
         ? "/app/data/storage"
-        : parsed.NODE_ENV === "test"
+        : process.env.VITEST === "true"
           ? path.join(os.tmpdir(), `appbase-api-storage-${randomUUID()}`)
-          : path.resolve(process.cwd(), "data/storage");
+          : path.join(API_PACKAGE_ROOT, "data/storage");
 
   const storageMaxUploadBytes = STORAGE_MAX_UPLOAD_BYTES ?? 50 * 1024 * 1024;
   const storageAllowedMime =
@@ -104,8 +138,15 @@ export function loadEnv(source: NodeJS.ProcessEnv): AppEnv {
       ? null
       : STORAGE_ALLOWED_MIME.trim();
 
+  const devSkipApiKeyRequested = envFlagTrue(source.DEV_SKIP_API_KEY);
+  if (devSkipApiKeyRequested && parsed.NODE_ENV !== "development") {
+    throw new Error("DEV_SKIP_API_KEY may only be set when NODE_ENV=development");
+  }
+  const devSkipApiKey = parsed.NODE_ENV === "development" && devSkipApiKeyRequested;
+
   return {
     ...rest,
+    DB_PATH: dbPath,
     BASE_URL: baseUrl,
     AUTH_SECRET: authSecret ?? "dev-secret-min-32-chars-required-for-auth",
     corsAllowedOrigins: buildCorsAllowedOrigins(CORS_ORIGINS, baseUrl),
@@ -113,5 +154,6 @@ export function loadEnv(source: NodeJS.ProcessEnv): AppEnv {
     storageMaxUploadBytes,
     storageAllowedMime,
     storageDriver: parsed.STORAGE_DRIVER,
+    devSkipApiKey,
   };
 }

@@ -16,8 +16,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 loadDotenv({ path: path.resolve(__dirname, "../.env"), quiet: true });
 
 const env = loadEnv(process.env);
-const dbPath = path.resolve(process.cwd(), env.DB_PATH);
-const db = createDb(dbPath);
+const db = createDb(env.DB_PATH);
 
 const APP_USER_ID = "app-default-bootstrap";
 
