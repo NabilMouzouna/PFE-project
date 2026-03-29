@@ -102,6 +102,40 @@ describe.sequential("admin routes", () => {
     expect(Array.isArray(body.data.items)).toBe(true);
   });
 
+  it("lists database tables with api key", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: "/admin/database/tables",
+      headers: { "x-api-key": apiKey },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body) as {
+      success: boolean;
+      data: { tables: { name: string; rowCount: number }[] };
+    };
+    expect(body.success).toBe(true);
+    expect(Array.isArray(body.data.tables)).toBe(true);
+    expect(body.data.tables.some((t) => t.name === "user")).toBe(true);
+  });
+
+  it("returns rows for a sqlite table", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: "/admin/database/tables/user?limit=5&offset=0",
+      headers: { "x-api-key": apiKey },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body) as {
+      success: boolean;
+      data: { table: string; columns: string[]; rows: unknown[]; total: number };
+    };
+    expect(body.success).toBe(true);
+    expect(body.data.table).toBe("user");
+    expect(body.data.columns.length).toBeGreaterThan(0);
+    expect(Array.isArray(body.data.rows)).toBe(true);
+    expect(body.data.total).toBeGreaterThanOrEqual(0);
+  });
+
   it("returns api-key metadata", async () => {
     const res = await app.inject({
       method: "GET",

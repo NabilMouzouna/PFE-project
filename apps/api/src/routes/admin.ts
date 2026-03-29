@@ -42,6 +42,51 @@ function maskInstanceKey(prefix: string | null | undefined): string {
   return `${p}••••••••••••`;
 }
 
+const ADMIN_SQLITE_IDENT = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+function quoteSqliteTableName(name: string): string {
+  return `"${name.replace(/"/g, '""')}"`;
+}
+
+function listAdminSqliteTables(app: FastifyInstance): string[] {
+  const rows = app.db.all(
+    sql.raw(
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name`,
+    ),
+  ) as { name: string }[];
+  return rows.map((r) => r.name).filter((n) => ADMIN_SQLITE_IDENT.test(n));
+}
+
+function adminTableColumns(app: FastifyInstance, table: string): string[] {
+  const info = app.db.all(
+    sql.raw(`PRAGMA table_info(${quoteSqliteTableName(table)})`),
+  ) as { name: string }[];
+  return info.map((c) => c.name);
+}
+
+function adminSqliteRowCount(app: FastifyInstance, table: string): number {
+  const rows = app.db.all(
+    sql.raw(`SELECT COUNT(*) AS c FROM ${quoteSqliteTableName(table)}`),
+  ) as { c: number | bigint }[];
+  const c = rows[0]?.c;
+  return typeof c === "bigint" ? Number(c) : Number(c ?? 0);
+}
+
+function adminRedactCell(column: string, value: unknown): unknown {
+  if (column === "password" || column === "key") return "—redacted—";
+  if (typeof value === "bigint") return value.toString();
+  if (value instanceof Buffer) return `[binary ${value.length} bytes]`;
+  return value;
+}
+
+function adminNormalizeRow(columns: string[], row: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const col of columns) {
+    out[col] = adminRedactCell(col, row[col]);
+  }
+  return out;
+}
+
 const rotateBodySchema = z.object({}).strict();
 
 const setPasswordBodySchema = z.object({
@@ -641,6 +686,136 @@ export async function registerAdminRoutes(app: FastifyInstance) {
       });
 
       return apiSuccess({ updated: true as const });
+    },
+  );
+
+  app.get(
+    "/admin/database/tables",
+    {
+      schema: {
+        tags: ["admin"],
+        summary: "List SQLite tables",
+        description: "Operator-only introspection of application tables and row counts.",
+        security: adminSecurity,
+        response: {
+          200: {
+            type: "object",
+            properties: {
+              success: { type: "boolean", const: true },
+              data: {
+                type: "object",
+                properties: {
+                  tables: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        name: { type: "string" },
+                        rowCount: { type: "integer" },
+                      },
+                      required: ["name", "rowCount"],
+                    },
+                  },
+                },
+                required: ["tables"],
+              },
+            },
+            required: ["success", "data"],
+          },
+          401: apiErrorSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      if (!(await requireAdminAccess(request, reply, app))) return;
+      const names = listAdminSqliteTables(app);
+      const tables = names.map((name) => ({
+        name,
+        rowCount: adminSqliteRowCount(app, name),
+      }));
+      return apiSuccess({ tables });
+    },
+  );
+
+  app.get<{
+    Params: { table: string };
+    Querystring: { limit?: string; offset?: string };
+  }>(
+    "/admin/database/tables/:table",
+    {
+      schema: {
+        tags: ["admin"],
+        summary: "Preview SQLite table rows",
+        description: "Paginated rows for operator debugging. Secrets in password/key columns are redacted.",
+        security: adminSecurity,
+        params: {
+          type: "object",
+          properties: { table: { type: "string" } },
+          required: ["table"],
+        },
+        querystring: {
+          type: "object",
+          properties: {
+            limit: { type: "string" },
+            offset: { type: "string" },
+          },
+        },
+        response: {
+          200: {
+            type: "object",
+            properties: {
+              success: { type: "boolean", const: true },
+              data: {
+                type: "object",
+                properties: {
+                  table: { type: "string" },
+                  columns: { type: "array", items: { type: "string" } },
+                  rows: { type: "array", items: { type: "object", additionalProperties: true } },
+                  total: { type: "integer" },
+                  limit: { type: "integer" },
+                  offset: { type: "integer" },
+                },
+                required: ["table", "columns", "rows", "total", "limit", "offset"],
+              },
+            },
+            required: ["success", "data"],
+          },
+          401: apiErrorSchema,
+          404: apiErrorSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      if (!(await requireAdminAccess(request, reply, app))) return;
+      const rawName = request.params.table;
+      if (!ADMIN_SQLITE_IDENT.test(rawName)) {
+        return reply.status(404).send(apiError("NOT_FOUND", "Unknown table."));
+      }
+      const allowed = new Set(listAdminSqliteTables(app));
+      if (!allowed.has(rawName)) {
+        return reply.status(404).send(apiError("NOT_FOUND", "Unknown table."));
+      }
+
+      const limit = Math.min(Math.max(1, parseInt(request.query.limit ?? "50", 10)), 200);
+      const offset = Math.max(0, parseInt(request.query.offset ?? "0", 10));
+      const columns = adminTableColumns(app, rawName);
+      const total = adminSqliteRowCount(app, rawName);
+      const rawRows = app.db.all(
+        sql.raw(
+          `SELECT * FROM ${quoteSqliteTableName(rawName)} LIMIT ${limit} OFFSET ${offset}`,
+        ),
+      ) as Record<string, unknown>[];
+
+      const rows = rawRows.map((r) => adminNormalizeRow(columns, r));
+
+      return apiSuccess({
+        table: rawName,
+        columns,
+        rows,
+        total,
+        limit,
+        offset,
+      });
     },
   );
 }

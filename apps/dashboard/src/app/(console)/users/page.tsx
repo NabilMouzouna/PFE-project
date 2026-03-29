@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { ConsoleHighlight } from "@/components/console-highlight";
 import styles from "@/components/console-shell.module.css";
 import { bffData, bffJson, BffError } from "@/lib/bff-client";
 
@@ -46,7 +47,9 @@ export default function UsersPage() {
   return (
     <>
       <h1>Users</h1>
-      <p className={styles.muted}>End-users and operators registered on this instance.</p>
+      <ConsoleHighlight title="Accounts">
+        End-users and operators registered on this instance. The internal instance API-key account is not listed here.
+      </ConsoleHighlight>
 
       {isPending && (
         <div className={styles.stack}>

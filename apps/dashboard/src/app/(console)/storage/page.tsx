@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { ConsoleHighlight } from "@/components/console-highlight";
 import styles from "@/components/console-shell.module.css";
 import { bffData } from "@/lib/bff-client";
 
@@ -26,7 +27,10 @@ export default function StoragePage() {
   return (
     <>
       <h1>Storage</h1>
-      <p className={styles.muted}>Usage across all buckets for this instance.</p>
+      <ConsoleHighlight title="Storage" variant="storage">
+        Usage across all buckets on this instance. File metadata lives in SQLite; objects are stored under the API’s
+        configured storage root.
+      </ConsoleHighlight>
 
       {isPending && <div className={styles.skeleton} style={{ height: 80, maxWidth: 400 }} />}
       {isError && <p className={styles.errorBox}>{(error as Error).message}</p>}

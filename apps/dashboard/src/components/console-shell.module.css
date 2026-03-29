@@ -5,44 +5,139 @@
 }
 
 .sidebar {
-  width: 240px;
+  width: 244px;
   flex-shrink: 0;
   background: var(--appbase-ink-navy);
   color: var(--appbase-ink-inverse);
-  padding: var(--appbase-space-6) var(--appbase-space-4);
+  padding: var(--appbase-space-4);
   display: flex;
   flex-direction: column;
-  gap: var(--appbase-space-6);
+  gap: var(--appbase-space-5);
+  transition:
+    width 0.22s ease,
+    transform 0.22s ease;
+}
+
+.sidebarCollapsed {
+  width: 72px;
+  padding: var(--appbase-space-4) var(--appbase-space-2);
+}
+
+.sidebarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--appbase-space-2);
+  min-height: 40px;
+}
+
+.brandRow {
+  min-width: 0;
+  flex: 1;
 }
 
 .brand {
   font-weight: 700;
   font-size: 1.125rem;
   letter-spacing: 0.02em;
+  display: block;
+}
+
+.brandMark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--appbase-ink-inverse);
+  margin: 0 auto;
+}
+
+.sidebarCollapsed .brandRow {
+  flex: 0;
+}
+
+.sidebarCollapsed .brandMark {
+  margin: 0;
+}
+
+.iconBtn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--appbase-ink-inverse-muted);
+  cursor: pointer;
+}
+
+.iconBtn:hover {
+  color: var(--appbase-ink-inverse);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.iconBtnGlyph {
+  width: 20px;
+  height: 20px;
 }
 
 .nav {
   display: flex;
   flex-direction: column;
-  gap: var(--appbase-space-2);
+  gap: var(--appbase-space-1, 6px);
 }
 
-.nav a {
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: var(--appbase-space-3);
   color: var(--appbase-ink-inverse-muted);
   padding: var(--appbase-space-2) var(--appbase-space-3);
-  border-radius: 8px;
+  border-radius: 10px;
   text-decoration: none;
   font-size: 0.9375rem;
+  font-weight: 500;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
-.nav a:hover {
+.navLink:hover {
   color: var(--appbase-ink-inverse);
   background: rgba(255, 255, 255, 0.08);
 }
 
-.nav a[data-active="true"] {
+.navLinkActive {
   color: var(--appbase-ink-inverse);
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.navIcon {
+  flex-shrink: 0;
+  opacity: 0.92;
+}
+
+.navText {
+  min-width: 0;
+}
+
+.sidebarCollapsed .navLink {
+  justify-content: center;
+  padding: var(--appbase-space-3);
+}
+
+.sidebarCollapsed .navIcon {
+  margin: 0;
 }
 
 .footer {
@@ -53,29 +148,196 @@
 }
 
 .logout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--appbase-space-2);
   background: transparent;
   border: 1px solid var(--appbase-ink-inverse-muted);
   color: var(--appbase-ink-inverse);
   padding: var(--appbase-space-2) var(--appbase-space-4);
-  border-radius: 8px;
+  border-radius: 10px;
   font-weight: 600;
   font-size: 0.875rem;
+  cursor: pointer;
+  width: 100%;
+}
+
+.logoutIconOnly {
+  padding: var(--appbase-space-3);
+}
+
+.logoutIcon {
+  flex-shrink: 0;
+  opacity: 0.9;
 }
 
 .logout:hover {
   background: rgba(255, 255, 255, 0.08);
 }
 
+.mainWrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.topBar {
+  display: none;
+  align-items: center;
+  gap: var(--appbase-space-3);
+  padding: var(--appbase-space-3) var(--appbase-space-4);
+  background: #fff;
+  border-bottom: 1px solid var(--appbase-border-hairline);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  flex-shrink: 0;
+}
+
+.menuBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -8px;
+  margin-right: 0;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--appbase-ink-navy);
+  cursor: pointer;
+}
+
+.menuBtn:hover {
+  background: rgba(27, 42, 74, 0.06);
+}
+
+.menuBtnIcon {
+  width: 22px;
+  height: 22px;
+}
+
+.topBarTitle {
+  font-weight: 700;
+  font-size: 1.0625rem;
+  letter-spacing: 0.02em;
+  color: var(--appbase-ink-navy);
+}
+
 .main {
   flex: 1;
   padding: var(--appbase-space-8);
-  max-width: 960px;
+  padding-left: max(var(--appbase-space-4), env(safe-area-inset-left));
+  padding-right: max(var(--appbase-space-4), env(safe-area-inset-right));
+  max-width: min(1120px, 100%);
+  width: 100%;
+  margin: 0 auto;
 }
 
 .main h1 {
   margin: 0 0 var(--appbase-space-4);
-  font-size: 1.75rem;
+  font-size: clamp(1.35rem, 4vw, 1.75rem);
   font-weight: 700;
+}
+
+.scrim {
+  display: none;
+}
+
+/* ——— Mobile drawer ——— */
+@media (max-width: 880px) {
+  .shell {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: min(288px, 88vw);
+    max-width: 100%;
+    z-index: 200;
+    transform: translateX(-100%);
+    box-shadow: 8px 0 40px rgba(27, 42, 74, 0.2);
+    padding: var(--appbase-space-6) var(--appbase-space-4);
+    gap: var(--appbase-space-6);
+  }
+
+  .sidebarCollapsed {
+    width: min(288px, 88vw);
+    padding: var(--appbase-space-6) var(--appbase-space-4);
+  }
+
+  .sidebarMobileOpen {
+    transform: translateX(0);
+  }
+
+  .sidebarCollapsed .navLink {
+    justify-content: flex-start;
+    padding: var(--appbase-space-2) var(--appbase-space-3);
+  }
+
+  .sidebarCollapsed .logoutIconOnly {
+    padding: var(--appbase-space-2) var(--appbase-space-4);
+  }
+
+  .brandMark {
+    margin: 0;
+    width: auto;
+    height: auto;
+    padding: 0;
+    background: none;
+    font-size: 1.125rem;
+    letter-spacing: 0.02em;
+  }
+
+  .topBar {
+    display: flex;
+  }
+
+  .main {
+    padding: var(--appbase-space-4);
+    padding-top: var(--appbase-space-5);
+  }
+
+  .scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: rgba(27, 42, 74, 0.48);
+    cursor: pointer;
+    appearance: none;
+  }
+}
+
+@media (min-width: 881px) {
+  .scrim {
+    display: none !important;
+  }
+
+  .sidebar {
+    position: relative;
+    transform: none !important;
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar {
+    transition: none;
+  }
+
+  .navLink {
+    transition: none;
+  }
 }
 
 .card {
