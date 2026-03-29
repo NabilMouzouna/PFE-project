@@ -58,16 +58,6 @@ export default function ApiKeyPage() {
     },
   });
 
-  async function copyMasked() {
-    if (!data || data.status !== "active") return;
-    try {
-      await navigator.clipboard.writeText(data.masked);
-      setCopyHint("Copied masked preview. The full secret is only shown once after generate or regenerate.");
-    } catch {
-      setCopyHint("Could not copy to clipboard.");
-    }
-  }
-
   async function copyNewKey() {
     if (!newKeyOnce) return;
     try {
@@ -82,10 +72,9 @@ export default function ApiKeyPage() {
     <>
       <h1>API key</h1>
       <p className={styles.muted}>
-        This is the instance key for the SDK and HTTP clients (<code>x-api-key</code>). On API startup, a key is
-        created automatically if none exists—the full secret is printed once in the <strong>API server logs</strong>.
-        You can also <strong>Generate</strong> or <strong>Regenerate</strong> here to see a new key once in the browser.
-        The dashboard itself does not require an API key env var.
+        Instance secret for <code>x-api-key</code> in SDKs and HTTP clients. The <strong>full value is shown only once</strong>{" "}
+        after you generate here or confirm a regenerate—use <strong>Copy key</strong> then. Keys created at API startup
+        appear once in the API process logs.
       </p>
 
       {isPending && <div className={styles.skeleton} style={{ height: 48, maxWidth: 360 }} />}
@@ -111,19 +100,22 @@ export default function ApiKeyPage() {
 
       {data?.status === "active" && (
         <div className={styles.card}>
+          <p className={styles.muted} style={{ marginTop: 0 }}>
+            Current key (preview only—not valid as <code>x-api-key</code>):
+          </p>
           <div className={styles.row} style={{ marginBottom: 16 }}>
             <code style={{ fontSize: "1rem" }}>{data.masked}</code>
           </div>
           <div className={styles.row}>
-            <button type="button" className={styles.btnGhost} onClick={() => void copyMasked()}>
-              Copy masked
-            </button>
             <button type="button" className={styles.btnPrimary} onClick={() => setRotateOpen(true)}>
               Regenerate key
             </button>
           </div>
+          <p className={styles.muted} style={{ marginBottom: 0 }}>
+            Regenerating replaces the key and shows the new full secret once below—copy it before you leave this page.
+          </p>
           {copyHint && (
-            <p className={styles.muted} style={{ marginBottom: 0 }}>
+            <p className={styles.muted} style={{ marginTop: 12, marginBottom: 0 }}>
               {copyHint}
             </p>
           )}

@@ -91,10 +91,13 @@ function buildCorsAllowedOrigins(corsOriginsEnv: string | undefined, baseUrl: st
     baseOrigin,
     "http://localhost:3000",
     "http://localhost:3001",
+    "http://localhost:5180",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:3001",
+    "http://127.0.0.1:5180",
     "http://[::1]:3000",
     "http://[::1]:3001",
+    "http://[::1]:5180",
   ];
   return [...new Set([...fromEnv, ...defaults])];
 }

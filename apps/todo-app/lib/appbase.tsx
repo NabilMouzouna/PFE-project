@@ -11,7 +11,7 @@ export function AppBaseProvider({ children }: { children: React.ReactNode }) {
     return AppBase.init({
       endpoint: env.endpoint,
       apiKey: env.apiKey,
-      sessionStorageKey: "appbase_example_session",
+      sessionStorageKey: "appbase_todo_app_session",
       dbCache: true,
     });
   }, []);

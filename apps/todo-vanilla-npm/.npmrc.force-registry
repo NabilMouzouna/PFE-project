@@ -1,0 +1,4 @@
+# Optional: copy to `.npmrc` after `@appbase-pfe/sdk` exists on npm to force fetching
+# from the registry instead of the monorepo workspace (publish verification).
+#   cp .npmrc.force-registry .npmrc && pnpm install
+link-workspace-packages=false

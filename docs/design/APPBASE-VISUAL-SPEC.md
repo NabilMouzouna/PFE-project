@@ -1,6 +1,6 @@
 # AppBase — Visual design specification
 
-> **Purpose:** Canonical **style guide** for AppBase marketing pages, reference apps (`apps/example`), and future dashboard surfaces when they should feel consistent with the product brand.  
+> **Purpose:** Canonical **style guide** for AppBase marketing pages, reference apps (`apps/todo-app`), and future dashboard surfaces when they should feel consistent with the product brand.  
 > **Reference:** Derived from the approved landing mockup (soft cream canvas, navy typography, teal / rose / mint accents, editorial serif + neutral sans). Replace placeholder copy with AppBase-specific messaging in implementation.
 
 ---
@@ -261,7 +261,7 @@ Values below are **spec targets**; tune in implementation for WCAG. Names are **
 ## 11. Implementation notes
 
 - **Design tokens:** Map §5 and §6 to CSS custom properties (e.g. `:root { --appbase-bg-canvas: … }`) or to Tailwind `@theme` entries in app `globals.css`.
-- **Reference app (`apps/example`):** May retain its current neo-brutalist recipe until a deliberate reskin; this spec is the **target** for alignment.
+- **Reference app (`apps/todo-app`):** May retain its current neo-brutalist recipe until a deliberate reskin; this spec is the **target** for alignment.
 - **Assets:** Store approved PNG/SVG references under `docs/design/assets/` when checked in (avoid linking private IDE-only paths in published docs).
 - **Copy:** Replace any third-party placeholder names; keep tone: **simple, honest, builder-oriented**—aligned with `ARCHITECTURE.md` (single BaaS unit, LAN/offline, clear public API boundary).
 

@@ -158,8 +158,10 @@ Maintainers: release process and pack checks are in [`docs/PUBLISHING-SDK.md`](.
 ```
 AppBase/
 ├── apps/
-│   ├── api/              # Core BaaS API
-│   └── dashboard/        # Admin UI (Next.js)
+│   ├── api/                  # Core BaaS API
+│   ├── dashboard/            # Admin UI (Next.js)
+│   ├── todo-app/             # Next.js todo demo (`workspace:*` SDK)
+│   └── todo-vanilla-npm/     # Vite + TS demo (SDK from **npm**)
 ├── packages/
 │   ├── sdk/              # JS/TS client SDK (@appbase-pfe/sdk)
 │   ├── db/               # Schema + migrations

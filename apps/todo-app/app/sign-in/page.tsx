@@ -59,7 +59,7 @@ function SignInForm() {
               The app could not use the API (for example after resetting the database, or if{" "}
               <code className="rounded bg-(--panel) px-1 font-mono text-xs">NEXT_PUBLIC_APPBASE_API_KEY</code> no
               longer matches the server). Create a new API key on the server, update your{" "}
-              <code className="rounded bg-(--panel) px-1 font-mono text-xs">.env</code>, restart the example app,
+              <code className="rounded bg-(--panel) px-1 font-mono text-xs">.env</code>, restart the todo app,
               then sign in again.
             </p>
           </div>

@@ -65,7 +65,7 @@ describe.sequential("admin routes", () => {
     const body = JSON.parse(res.body) as { success: boolean; data: { users: { id: string }[] } };
     expect(body.success).toBe(true);
     expect(Array.isArray(body.data.users)).toBe(true);
-    expect(body.data.users.some((u) => u.id === API_KEY_INSTANCE_USER_ID)).toBe(true);
+    expect(body.data.users.some((u) => u.id === API_KEY_INSTANCE_USER_ID)).toBe(false);
   });
 
   it("returns storage usage", async () => {

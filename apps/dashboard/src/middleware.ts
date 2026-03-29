@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { DASHBOARD_ACCESS_COOKIE, DASHBOARD_API_SESSION_COOKIE } from "@/lib/dashboard-cookies";
-import { verifyOperatorAccessToken } from "@/lib/verify-access-token";
+import { verifyOperatorSession } from "@/lib/verify-operator-session";
 
 const PUBLIC_PATHS = new Set(["/", "/login", "/register", "/docs"]);
 
@@ -15,8 +15,9 @@ export async function middleware(request: NextRequest) {
   if (PUBLIC_PATHS.has(pathname)) {
     if (pathname === "/login" || pathname === "/register") {
       const token = request.cookies.get(DASHBOARD_ACCESS_COOKIE)?.value;
+      const apiSession = request.cookies.get(DASHBOARD_API_SESSION_COOKIE)?.value;
       if (token) {
-        const ok = await verifyOperatorAccessToken(token);
+        const ok = await verifyOperatorSession(token, apiSession);
         if (ok) {
           return NextResponse.redirect(new URL("/overview", request.url));
         }
@@ -26,11 +27,12 @@ export async function middleware(request: NextRequest) {
   }
 
   const token = request.cookies.get(DASHBOARD_ACCESS_COOKIE)?.value;
+  const apiSession = request.cookies.get(DASHBOARD_API_SESSION_COOKIE)?.value;
   if (!token) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  const ok = await verifyOperatorAccessToken(token);
+  const ok = await verifyOperatorSession(token, apiSession);
   if (!ok) {
     const res = NextResponse.redirect(new URL("/login", request.url));
     res.cookies.delete(DASHBOARD_ACCESS_COOKIE);

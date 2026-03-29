@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
-import { eq, desc, sql, count, and } from "drizzle-orm";
+import { eq, ne, desc, sql, count, and } from "drizzle-orm";
 import { z } from "zod";
 import { hashPassword } from "better-auth/crypto";
 import { user, account, files, auditLog, apiKeys } from "@appbase/db/schema";
@@ -36,10 +36,10 @@ function apiError(code: string, message: string) {
   return { success: false as const, error: { code, message } };
 }
 
-function maskInstanceKey(prefix: string | null | undefined, start: string | null | undefined): string {
+/** Public hint only — never include key material from `api_keys.start` (can mirror prefix and confuse UIs). */
+function maskInstanceKey(prefix: string | null | undefined): string {
   const p = prefix && prefix.length > 0 ? prefix : API_KEY_PREFIX;
-  const tail = start && start.length > 0 ? start : "????";
-  return `${p}••••${tail}`;
+  return `${p}••••••••••••`;
 }
 
 const rotateBodySchema = z.object({}).strict();
@@ -69,7 +69,8 @@ export async function registerAdminRoutes(app: FastifyInstance) {
       schema: {
         tags: ["admin"],
         summary: "List users",
-        description: "All end-users and operators in this instance (x-api-key).",
+        description:
+          "End-users and operators. The internal instance API-key user (bootstrap@appbase.local) is omitted.",
         security: adminSecurity,
         response: {
           200: {
@@ -118,6 +119,7 @@ export async function registerAdminRoutes(app: FastifyInstance) {
           emailVerified: user.emailVerified,
         })
         .from(user)
+        .where(ne(user.id, API_KEY_INSTANCE_USER_ID))
         .orderBy(user.createdAt);
 
       const users = rows.map((u) => ({
@@ -332,7 +334,7 @@ export async function registerAdminRoutes(app: FastifyInstance) {
       }
 
       const keyPrefix = row.prefix && row.prefix.length > 0 ? row.prefix : API_KEY_PREFIX;
-      const masked = maskInstanceKey(row.prefix, row.start);
+      const masked = maskInstanceKey(row.prefix);
       const lastRotatedAt =
         row.updatedAt instanceof Date ? row.updatedAt.toISOString() : row.updatedAt != null ? String(row.updatedAt) : null;
 
@@ -463,7 +465,7 @@ export async function registerAdminRoutes(app: FastifyInstance) {
 
       const row = access.row;
       const keyPrefix = row.prefix && row.prefix.length > 0 ? row.prefix : API_KEY_PREFIX;
-      const masked = maskInstanceKey(row.prefix, row.start);
+      const masked = maskInstanceKey(row.prefix);
       const lastRotatedAt =
         row.updatedAt instanceof Date ? row.updatedAt.toISOString() : row.updatedAt != null ? String(row.updatedAt) : null;
 
