@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import styles from "./marketing-nav.module.css";
 
@@ -13,7 +14,8 @@ export function MarketingNav({ variant = "default", authenticated = false }: Pro
     <div className={styles.outer}>
       <header className={styles.bar}>
         <Link href="/" className={styles.brand}>
-          AppBase
+          <Image src="/outlined-logo.png" alt="AppBase" width={22} height={22} className={styles.brandLogo} />
+          <span>AppBase</span>
         </Link>
         <nav className={styles.links} aria-label="Marketing">
           <Link href="/docs" className={styles.docLink}>

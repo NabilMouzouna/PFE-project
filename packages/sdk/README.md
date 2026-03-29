@@ -4,7 +4,7 @@ JavaScript/TypeScript SDK for [AppBase](https://github.com/NabilMouzouna/NubleCl
 
 ## Install (npm)
 
-Use the public npm registry. The scope **`@appbase`** must exist on npm for your organization (see [ADR-007](../../docs/adr/ADR-007-sdk-package-distribution.md)); if you publish under a different scope, replace it in install commands and imports.
+Published packages use the **`@appbase-pfe`** scope on npm (see [ADR-007](../../docs/adr/ADR-007-sdk-package-distribution.md)).
 
 ```bash
 npm install @appbase-pfe/sdk

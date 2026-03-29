@@ -12,6 +12,7 @@ import {
   type ProfileData,
   defaultDisplayName,
 } from "@/lib/profile-schema";
+import Image from "next/image";
 
 type ProfileRow = DbRecord<ProfileData>;
 
@@ -234,7 +235,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged }: ProfileModal
           <div className="flex flex-col items-center gap-3 sm:w-44">
             <div className="relative h-28 w-28 overflow-hidden rounded-full border-2 border-var(--line) bg-var(--panel) shadow-[3px_3px_0_var(--line)]">
               {avatarObjectUrl ? (
-                <img src={avatarObjectUrl} alt="Your profile photo" className="h-full w-full object-cover" />
+                <Image src={avatarObjectUrl} alt="Your profile photo" className="h-full w-full object-cover" />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-3xl font-bold text-var(--foreground)/40">
                   {(displayName || fullUser.email).slice(0, 1).toUpperCase()}
@@ -260,7 +261,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged }: ProfileModal
               Change photo
             </Button>
             {avatarHint ? (
-              <p className="max-w-[12rem] text-center text-xs text-amber-700 dark:text-amber-300">{avatarHint}</p>
+              <p className="max-w-48 text-center text-xs text-amber-700 dark:text-amber-300">{avatarHint}</p>
             ) : null}
           </div>
 

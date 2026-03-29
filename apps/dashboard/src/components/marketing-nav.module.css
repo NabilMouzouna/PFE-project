@@ -36,6 +36,15 @@
   text-decoration: none;
   letter-spacing: -0.02em;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.brandLogo {
+  border-radius: 6px;
+  width: auto;
+  height: auto;
 }
 
 .brand:hover {

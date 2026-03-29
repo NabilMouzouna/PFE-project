@@ -1,8 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BookMarked,
   BookOpen,
   ChevronsLeft,
   ChevronsRight,
@@ -25,6 +27,7 @@ const MOBILE_BP = 880;
 
 const nav: { href: string; label: string; Icon: LucideIcon }[] = [
   { href: "/overview", label: "Overview", Icon: LayoutDashboard },
+  { href: "/docs", label: "Docs", Icon: BookMarked },
   { href: "/database", label: "Database", Icon: Database },
   { href: "/settings/api-key", label: "API key", Icon: KeyRound },
   { href: "/users", label: "Users", Icon: Users },
@@ -35,7 +38,7 @@ const nav: { href: string; label: string; Icon: LucideIcon }[] = [
 
 function navActive(pathname: string, href: string): boolean {
   if (pathname === href) return true;
-  if (href !== "/overview" && href !== "/database" && pathname.startsWith(href)) return true;
+  if (href !== "/overview" && href !== "/database" && href !== "/docs" && pathname.startsWith(href)) return true;
   if (href === "/database" && pathname.startsWith("/database")) return true;
   return false;
 }
@@ -113,10 +116,13 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
           <div className={styles.brandRow}>
             {effectiveCollapsed ? (
               <span className={styles.brandMark} title="AppBase">
-                AB
+                <Image src="/white-logo.png" alt="AppBase" width={26} height={26} className={styles.brandLogo} />
               </span>
             ) : (
-              <span className={styles.brand}>AppBase</span>
+              <span className={styles.brand}>
+                <Image src="/white-logo.png" alt="AppBase" width={22} height={22} className={styles.brandLogo} />
+                AppBase
+              </span>
             )}
           </div>
           {!isMobile && (
@@ -190,7 +196,10 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
           >
             <Menu className={styles.menuBtnIcon} strokeWidth={1.85} aria-hidden size={22} />
           </button>
-          <span className={styles.topBarTitle}>AppBase</span>
+          <span className={styles.topBarTitle}>
+            <Image src="/white-logo.png" alt="AppBase" width={18} height={18} className={styles.topBarLogo} />
+            AppBase
+          </span>
         </header>
         <main className={styles.main}>{children}</main>
       </div>

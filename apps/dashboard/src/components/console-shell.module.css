@@ -19,7 +19,7 @@
 }
 
 .sidebarCollapsed {
-  width: 72px;
+  width: 76px;
   padding: var(--appbase-space-4) var(--appbase-space-2);
 }
 
@@ -40,7 +40,15 @@
   font-weight: 700;
   font-size: 1.125rem;
   letter-spacing: 0.02em;
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--appbase-space-2);
+}
+
+.brandLogo {
+  width: auto;
+  height: auto;
+  border-radius: 6px;
 }
 
 .brandMark {
@@ -58,12 +66,27 @@
   margin: 0 auto;
 }
 
+.sidebarCollapsed .sidebarHeader {
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--appbase-space-3);
+  min-height: auto;
+}
+
 .sidebarCollapsed .brandRow {
-  flex: 0;
+  flex: 0 0 auto;
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
 .sidebarCollapsed .brandMark {
   margin: 0;
+}
+
+.sidebarCollapsed .iconBtn {
+  flex-shrink: 0;
 }
 
 .iconBtn {
@@ -225,6 +248,13 @@
   font-size: 1.0625rem;
   letter-spacing: 0.02em;
   color: var(--appbase-ink-navy);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--appbase-space-2);
+}
+
+.topBarLogo {
+  border-radius: 4px;
 }
 
 .main {

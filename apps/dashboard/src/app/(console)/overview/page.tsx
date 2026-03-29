@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useQueries } from "@tanstack/react-query";
+import { Database, HardDrive, ServerCog, ShieldCheck, UsersRound } from "lucide-react";
 import { ConsoleHighlight } from "@/components/console-highlight";
 import styles from "@/components/console-shell.module.css";
 import ovStyles from "./overview.module.css";
@@ -59,15 +60,12 @@ export default function OverviewPage() {
     ],
   });
 
-  const healthy =
-    healthQ.data?.success === true && healthQ.data?.data?.status === "healthy";
+  const healthy = healthQ.data?.success === true && healthQ.data?.data?.status === "healthy";
   const userCount = usersQ.data?.users?.length ?? null;
-  const adminCount =
-    usersQ.data?.users?.filter((u) => u.role === "admin").length ?? undefined;
+  const adminCount = usersQ.data?.users?.filter((u) => u.role === "admin").length ?? undefined;
   const storage = storageQ.data;
   const tableCount = dbQ.data?.tables?.length ?? null;
-  const recordRows =
-    dbQ.data?.tables?.find((t) => t.name === "records")?.rowCount ?? null;
+  const recordRows = dbQ.data?.tables?.find((t) => t.name === "records")?.rowCount ?? null;
 
   return (
     <>
@@ -80,7 +78,12 @@ export default function OverviewPage() {
 
       <section className={ovStyles.grid}>
         <div className={`${ovStyles.tile} ${ovStyles.tileHealth}`}>
-          <div className={ovStyles.tileKicker}>Health</div>
+          <div className={ovStyles.tileHead}>
+            <div className={ovStyles.tileKicker}>Health</div>
+            <span className={`${ovStyles.tileIcon} ${ovStyles.iconHealth}`} aria-hidden>
+              <ShieldCheck size={18} strokeWidth={1.9} />
+            </span>
+          </div>
           {healthQ.isPending && <div className={styles.skeleton} style={{ height: 36, width: 100 }} />}
           {healthQ.isError && (
             <p className={styles.errorBox} style={{ margin: 0 }}>
@@ -89,10 +92,7 @@ export default function OverviewPage() {
           )}
           {healthQ.data && (
             <>
-              <div
-                className={`${styles.pill} ${healthy ? styles.pillOk : styles.pillBad}`}
-                style={{ marginBottom: "var(--appbase-space-3)" }}
-              >
+              <div className={`${styles.pill} ${healthy ? styles.pillOk : styles.pillBad}`} style={{ marginBottom: "var(--appbase-space-3)" }}>
                 {healthy ? "Healthy" : healthQ.data.success === false ? "Unhealthy" : "Unknown"}
               </div>
               {healthQ.data.data?.checks && (
@@ -105,56 +105,54 @@ export default function OverviewPage() {
                   </li>
                 </ul>
               )}
-              {healthQ.data.success === false && healthQ.data.error?.message && (
-                <p className={styles.muted} style={{ margin: 0 }}>
-                  {healthQ.data.error.message}
-                </p>
-              )}
             </>
           )}
         </div>
 
         <div className={`${ovStyles.tile} ${ovStyles.tileApi}`}>
-          <div className={ovStyles.tileKicker}>API</div>
+          <div className={ovStyles.tileHead}>
+            <div className={ovStyles.tileKicker}>API</div>
+            <span className={`${ovStyles.tileIcon} ${ovStyles.iconApi}`} aria-hidden>
+              <ServerCog size={18} strokeWidth={1.9} />
+            </span>
+          </div>
           {metaQ.isPending && <div className={styles.skeleton} style={{ height: 48 }} />}
           {metaQ.data && (
             <p className={ovStyles.apiUrl} title={metaQ.data.apiBaseUrl}>
               {metaQ.data.apiBaseUrl}
             </p>
           )}
-          {metaQ.isError && (
-            <p className={styles.muted} style={{ margin: 0 }}>
-              Could not load meta.
-            </p>
-          )}
         </div>
 
         <div className={`${ovStyles.tile} ${ovStyles.tileUsers}`}>
-          <div className={ovStyles.tileKicker}>Users</div>
+          <div className={ovStyles.tileHead}>
+            <div className={ovStyles.tileKicker}>Users</div>
+            <span className={`${ovStyles.tileIcon} ${ovStyles.iconUsers}`} aria-hidden>
+              <UsersRound size={18} strokeWidth={1.9} />
+            </span>
+          </div>
           {usersQ.isPending && <div className={styles.skeleton} style={{ height: 40, width: 80 }} />}
           {usersQ.data && (
             <>
               <div className={ovStyles.stat}>{userCount}</div>
               <p className={ovStyles.tileSub}>
                 Operators & end-users
-                {adminCount != null
-                  ? ` · ${adminCount} admin${adminCount === 1 ? "" : "s"}`
-                  : ""}
+                {adminCount != null ? ` · ${adminCount} admin${adminCount === 1 ? "" : "s"}` : ""}
               </p>
               <Link href="/users" className={ovStyles.tileLink}>
                 Manage users →
               </Link>
             </>
           )}
-          {usersQ.isError && (
-            <p className={styles.muted} style={{ margin: 0 }}>
-              Could not load users.
-            </p>
-          )}
         </div>
 
         <div className={`${ovStyles.tile} ${ovStyles.tileStorage}`}>
-          <div className={ovStyles.tileKicker}>Storage</div>
+          <div className={ovStyles.tileHead}>
+            <div className={ovStyles.tileKicker}>Storage</div>
+            <span className={`${ovStyles.tileIcon} ${ovStyles.iconStorage}`} aria-hidden>
+              <HardDrive size={18} strokeWidth={1.9} />
+            </span>
+          </div>
           {storageQ.isPending && <div className={styles.skeleton} style={{ height: 40, width: 120 }} />}
           {storage && (
             <>
@@ -176,15 +174,15 @@ export default function OverviewPage() {
               </Link>
             </>
           )}
-          {storageQ.isError && (
-            <p className={styles.muted} style={{ margin: 0 }}>
-              Could not load storage.
-            </p>
-          )}
         </div>
 
         <div className={`${ovStyles.tile} ${ovStyles.tileDb}`}>
-          <div className={ovStyles.tileKicker}>Database</div>
+          <div className={ovStyles.tileHead}>
+            <div className={ovStyles.tileKicker}>Database</div>
+            <span className={`${ovStyles.tileIcon} ${ovStyles.iconDb}`} aria-hidden>
+              <Database size={18} strokeWidth={1.9} />
+            </span>
+          </div>
           {dbQ.isPending && <div className={styles.skeleton} style={{ height: 40, width: 100 }} />}
           {dbQ.data && (
             <>
@@ -194,19 +192,13 @@ export default function OverviewPage() {
               </div>
               {recordRows != null && (
                 <p className={ovStyles.tileSub}>
-                  {recordRows.toLocaleString()} document row{recordRows === 1 ? "" : "s"} in{" "}
-                  <code className={ovStyles.inlineCode}>records</code>
+                  {recordRows.toLocaleString()} document row{recordRows === 1 ? "" : "s"} in <code className={ovStyles.inlineCode}>records</code>
                 </p>
               )}
               <Link href="/database" className={ovStyles.tileLink}>
                 Browse tables →
               </Link>
             </>
-          )}
-          {dbQ.isError && (
-            <p className={styles.muted} style={{ margin: 0 }}>
-              Could not load database info.
-            </p>
           )}
         </div>
       </section>

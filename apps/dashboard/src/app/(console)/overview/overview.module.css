@@ -15,17 +15,58 @@
   min-height: 160px;
 }
 
+.tileHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--appbase-space-3);
+}
+
+.tileIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.iconHealth {
+  color: #0f766e;
+  background: rgba(45, 181, 168, 0.2);
+}
+
+.iconApi {
+  color: #4338ca;
+  background: rgba(129, 140, 248, 0.22);
+}
+
+.iconUsers {
+  color: #1d4ed8;
+  background: rgba(96, 165, 250, 0.24);
+}
+
+.iconStorage {
+  color: #be185d;
+  background: rgba(244, 114, 182, 0.2);
+}
+
+.iconDb {
+  color: #0369a1;
+  background: rgba(56, 189, 248, 0.22);
+}
+
 .tileHealth {
   border-color: rgba(45, 181, 168, 0.35);
   background: linear-gradient(160deg, #fff 0%, var(--appbase-accent-db-bg) 120%);
 }
 
 .tileApi {
-  border-color: rgba(27, 42, 74, 0.12);
+  border-color: rgba(99, 102, 241, 0.28);
 }
 
 .tileUsers {
-  border-color: rgba(27, 42, 74, 0.12);
+  border-color: rgba(59, 130, 246, 0.24);
 }
 
 .tileStorage {
