@@ -2,7 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import styles from "@/components/console-shell.module.css";
-import { bffData } from "@/lib/bff-client";
+import { ConsoleAdminBffPlaceholder } from "@/components/console-admin-bff-placeholder";
+import { bffData, isAdminBffConfigError } from "@/lib/bff-client";
 
 type Usage = {
   totalFiles: number;
@@ -29,7 +30,12 @@ export default function StoragePage() {
       <p className={styles.muted}>Usage across all buckets for this instance.</p>
 
       {isPending && <div className={styles.skeleton} style={{ height: 80, maxWidth: 400 }} />}
-      {isError && <p className={styles.errorBox}>{(error as Error).message}</p>}
+      {isError &&
+        (isAdminBffConfigError(error) ? (
+          <ConsoleAdminBffPlaceholder />
+        ) : (
+          <p className={styles.errorBox}>{(error as Error).message}</p>
+        ))}
 
       {data && (
         <div className={styles.row} style={{ gap: 24 }}>

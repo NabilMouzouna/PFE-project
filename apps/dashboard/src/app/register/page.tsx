@@ -24,7 +24,14 @@ export default function RegisterPage() {
         credentials: "include",
         body: JSON.stringify({ email, password }),
       });
-      const json = (await res.json()) as { success?: boolean; error?: { code?: string; message?: string } };
+      const text = await res.text();
+      let json: { success?: boolean; error?: { code?: string; message?: string } };
+      try {
+        json = text ? (JSON.parse(text) as typeof json) : {};
+      } catch {
+        setError("Invalid response from server. Is the AppBase API running and API_BASE_URL correct?");
+        return;
+      }
       if (!res.ok || !json.success) {
         setError(json.error?.message ?? "Registration failed.");
         return;
@@ -48,7 +55,8 @@ export default function RegisterPage() {
           </p>
           <p className={authStyles.hint}>
             Production: set matching <code>APPBASE_BOOTSTRAP_SECRET</code> on the API and dashboard (or{" "}
-            <code>DASHBOARD_BOOTSTRAP_SECRET</code> on the dashboard).
+            <code>DASHBOARD_BOOTSTRAP_SECRET</code> on the dashboard). After sign-in, create your instance API key under
+            Settings → API key.
           </p>
           {error && <p className={authStyles.error}>{error}</p>}
           <form onSubmit={(e) => void onSubmit(e)} className={authStyles.stack}>

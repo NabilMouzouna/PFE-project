@@ -40,6 +40,22 @@ export const DOCS_PATH_PREFIX = "/docs";
 export const BOOTSTRAP_FIRST_OPERATOR_PATH = "/bootstrap/first-operator";
 
 /**
+ * Instance API key routes: auth is `x-api-key` or admin JWT in route handlers (operator console without
+ * preconfigured `DASHBOARD_API_KEY`).
+ */
+export const ADMIN_INSTANCE_API_KEY_PATHS: readonly { method: string; path: string }[] = [
+  { method: "GET", path: "/admin/api-key" },
+  { method: "GET", path: "/admin/api-key/setup-status" },
+  { method: "POST", path: "/admin/api-key/bootstrap" },
+  { method: "POST", path: "/admin/api-key/rotate" },
+];
+
+export function isAdminInstanceApiKeyPath(method: string, urlPath: string): boolean {
+  const p = urlPath.split("?")[0] ?? "";
+  return ADMIN_INSTANCE_API_KEY_PATHS.some((x) => x.method === method && x.path === p);
+}
+
+/**
  * In `NODE_ENV=test`, these POST paths skip `x-api-key` so auth integration tests run without a key.
  */
 export const TEST_EXCLUDED_AUTH_POST_PATHS: readonly string[] = [

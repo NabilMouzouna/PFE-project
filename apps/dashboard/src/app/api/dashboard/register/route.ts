@@ -1,3 +1,4 @@
+import { fetchApiUpstream } from "@/lib/fetch-upstream";
 import { getApiBaseUrl } from "@/lib/jwks";
 import { nextResponseFromApiAuth } from "@/lib/apply-dashboard-session";
 
@@ -28,12 +29,15 @@ export async function POST(request: Request) {
     headers["x-appbase-bootstrap-secret"] = secret;
   }
 
-  const upstream = await fetch(`${apiBase}/bootstrap/first-operator`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
+  const upstream = await fetchApiUpstream(
+    `${apiBase}/bootstrap/first-operator`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    },
+    apiBase,
+  );
 
   return nextResponseFromApiAuth(upstream, { requireAdminRole: false });
 }

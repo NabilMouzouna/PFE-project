@@ -8,8 +8,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { AppBase } from "./appbase";
-import type { AuthState } from "./auth";
+import type { AppBase } from "./appbase.js";
+import type { AuthState } from "./auth.js";
 
 type AuthContextValue = {
   appBase: AppBase;

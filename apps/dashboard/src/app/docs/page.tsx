@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MarketingNav } from "@/components/marketing-nav";
+import { isOperatorAuthenticated } from "@/lib/marketing-auth";
 import styles from "./docs.module.css";
 
 const sections = [
@@ -27,8 +28,11 @@ const sections = [
     body: (
       <ul>
         <li>Start the API container or <code>pnpm --filter api dev</code>.</li>
-        <li>Create an instance API key (script or admin flow).</li>
-        <li>Point the dashboard at <code>API_BASE_URL</code> and set <code>DASHBOARD_API_KEY</code>.</li>
+        <li>Create an instance API key in the dashboard: Settings → API key → Generate; copy it for the SDK.</li>
+        <li>
+          Point the dashboard at <code>API_BASE_URL</code>. Set <code>DASHBOARD_API_KEY</code> to that same key when you
+          need Users, Audit, and other BFF-backed admin pages.
+        </li>
         <li>Register the first operator from this site or promote an existing user to admin.</li>
       </ul>
     ),
@@ -68,44 +72,67 @@ const sections = [
   },
 ];
 
-export default function DocsPage() {
+export default async function DocsPage() {
+  const authenticated = await isOperatorAuthenticated();
+
   return (
     <div className={styles.page}>
-      <MarketingNav />
-      <div className={styles.shell}>
-        <header className={styles.hero}>
-          <h1>Documentation</h1>
-          <p>Guides and API overview for AppBase. Sections below are stubs until the full doc set is published.</p>
-          <span className={styles.placeholderPill}>Work in progress</span>
-        </header>
+      <MarketingNav authenticated={authenticated} />
 
-        <nav className={styles.toc} aria-label="On this page">
-          <h2>On this page</h2>
-          <ul>
-            {sections.map((s) => (
-              <li key={s.id}>
-                <a href={`#${s.id}`}>{s.title}</a>
-              </li>
-            ))}
-          </ul>
-        </nav>
+      <div className={styles.frame}>
+        <aside className={styles.sidebar} aria-label="Documentation sections">
+          <div className={styles.sidebarInner}>
+            <p className={styles.sidebarKicker}>Contents</p>
+            <nav className={styles.sideNav}>
+              <ul>
+                {sections.map((s) => (
+                  <li key={s.id}>
+                    <a href={`#${s.id}`}>{s.title}</a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+            <div className={styles.sidebarFoot}>
+              <Link href="/">← Home</Link>
+              {authenticated ? (
+                <Link href="/overview">Console</Link>
+              ) : (
+                <Link href="/login">Log in</Link>
+              )}
+            </div>
+          </div>
+        </aside>
 
-        {sections.map((s) => (
-          <section key={s.id} id={s.id} className={`${styles.section} ${s.className}`}>
-            <h2>{s.title}</h2>
-            {s.body}
-          </section>
-        ))}
+        <div className={styles.main}>
+          <header className={styles.hero}>
+            <h1>Documentation</h1>
+            <p>Guides and API overview for AppBase. Sections below are stubs until the full doc set is published.</p>
+            <span className={styles.placeholderPill}>Work in progress</span>
+          </header>
 
-        <div className={styles.cta}>
-          <p>Ready to try the operator console or live Swagger?</p>
-          <div className={styles.ctaLinks}>
-            <Link href="/register" className={styles.ctaBtnPrimary}>
-              Get started
-            </Link>
-            <Link href="/login" className={styles.ctaBtnGhost}>
-              Sign in
-            </Link>
+          {sections.map((s) => (
+            <section key={s.id} id={s.id} className={`${styles.section} ${s.className}`}>
+              <h2>{s.title}</h2>
+              {s.body}
+            </section>
+          ))}
+
+          <div className={styles.cta}>
+            <p>Ready to run an instance or open the operator console?</p>
+            <div className={styles.ctaLinks}>
+              {authenticated ? (
+                <Link href="/overview" className={styles.ctaBtnPrimary}>
+                  Open console
+                </Link>
+              ) : (
+                <Link href="/register" className={styles.ctaBtnPrimary}>
+                  Get started
+                </Link>
+              )}
+              <Link href="/" className={styles.ctaBtnGhost}>
+                Back to home
+              </Link>
+            </div>
           </div>
         </div>
       </div>

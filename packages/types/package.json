@@ -1,20 +1,46 @@
 {
   "name": "@appbase/types",
-  "version": "0.0.1",
-  "private": true,
+  "version": "0.1.0",
+  "description": "Shared TypeScript types for the AppBase HTTP API (auth, db, storage, errors).",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
   },
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "files": ["dist", "README.md", "LICENSE", "CHANGELOG.md"],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "author": "Nabil Mouzouna",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NabilMouzouna/NubleCloud-PFE.git",
+    "directory": "packages/types"
+  },
+  "bugs": {
+    "url": "https://github.com/NabilMouzouna/NubleCloud-PFE/issues"
+  },
+  "homepage": "https://github.com/NabilMouzouna/NubleCloud-PFE/tree/main/packages/types#readme",
+  "keywords": ["appbase", "baas", "types"],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
-    "build": "tsc",
-    "check-types": "tsc --noEmit",
-    "dev": "tsc --watch"
+    "build": "rimraf dist && tsc -p tsconfig.build.json",
+    "check-types": "tsc --noEmit -p tsconfig.json",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "prepublishOnly": "pnpm run check-types && pnpm run build"
   },
   "devDependencies": {
     "@appbase/config": "workspace:*",
+    "rimraf": "^6.0.1",
     "typescript": "5.9.2"
   }
 }

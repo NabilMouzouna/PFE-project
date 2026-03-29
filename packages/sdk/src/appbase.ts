@@ -1,6 +1,6 @@
-import { AuthClient } from "./auth";
-import { StorageClient } from "./storage";
-import { DbClient } from "./db";
+import { AuthClient } from "./auth.js";
+import { StorageClient } from "./storage.js";
+import { DbClient } from "./db.js";
 
 export interface AppBaseConfig {
   endpoint: string;

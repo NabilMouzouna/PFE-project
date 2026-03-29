@@ -117,6 +117,18 @@ LAN / Private VPC
 
 For a deeper, implementation-level view of both the current M1 architecture and the target platform architecture, see [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md). For the public request/response contract consumed by SDKs and client apps, see [`docs/API-SPEC.md`](./docs/API-SPEC.md).
 
+### Using the SDK from npm
+
+The client libraries **`@appbase/types`** and **`@appbase/sdk`** are published to the **public npm registry** (see [ADR-007](./docs/adr/ADR-007-sdk-package-distribution.md) for scope and naming). Install into any app that talks to your deployed AppBase API:
+
+```bash
+npm install @appbase/sdk
+```
+
+Point `AppBase.init` at your API base URL and credentials; the wire format is defined in [`docs/API-SPEC.md`](./docs/API-SPEC.md). Optional React exports: `import { … } from "@appbase/sdk/react"` (install `react` ≥ 18).
+
+Maintainers: release process and pack checks are in [`docs/PUBLISHING-SDK.md`](./docs/PUBLISHING-SDK.md).
+
 ### Tech Stack
 
 |Layer               |Technology                                           |

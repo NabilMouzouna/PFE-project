@@ -5,7 +5,17 @@ import { useState } from "react";
 import styles from "@/components/console-shell.module.css";
 import { bffData, bffJson } from "@/lib/bff-client";
 
-type ApiKeyMeta = { keyPrefix: string; masked: string; lastRotatedAt: string | null };
+type ApiKeyMissing = { status: "missing"; bffConfigured: boolean };
+
+type ApiKeyActive = {
+  status: "active";
+  keyPrefix: string;
+  masked: string;
+  lastRotatedAt: string | null;
+  bffConfigured: boolean;
+};
+
+type ApiKeyState = ApiKeyMissing | ApiKeyActive;
 
 export default function ApiKeyPage() {
   const qc = useQueryClient();
@@ -16,7 +26,21 @@ export default function ApiKeyPage() {
 
   const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: ["admin-api-key"],
-    queryFn: () => bffData<ApiKeyMeta>("/api/dashboard/admin/api-key"),
+    queryFn: () => bffData<ApiKeyState>("/api/dashboard/admin/api-key"),
+  });
+
+  const bootstrap = useMutation({
+    mutationFn: async () => {
+      const res = await bffJson<{ success: true; data: { key: string } }>("/api/dashboard/admin/api-key/bootstrap", {
+        method: "POST",
+        body: "{}",
+      });
+      return res.data;
+    },
+    onSuccess: (d) => {
+      setNewKeyOnce(d.key);
+      void qc.invalidateQueries({ queryKey: ["admin-api-key"] });
+    },
   });
 
   const rotate = useMutation({
@@ -36,10 +60,10 @@ export default function ApiKeyPage() {
   });
 
   async function copyMasked() {
-    if (!data) return;
+    if (!data || data.status !== "active") return;
     try {
       await navigator.clipboard.writeText(data.masked);
-      setCopyHint("Copied masked preview. Full key is only shown once after Regenerate.");
+      setCopyHint("Copied masked preview. The full secret is only shown once after generate or regenerate.");
     } catch {
       setCopyHint("Could not copy to clipboard.");
     }
@@ -49,7 +73,11 @@ export default function ApiKeyPage() {
     if (!newKeyOnce) return;
     try {
       await navigator.clipboard.writeText(newKeyOnce);
-      setCopyHint("New key copied. Update DASHBOARD_API_KEY (and clients) or the console will lose API access.");
+      setCopyHint(
+        data?.status === "active" && !data.bffConfigured
+          ? "Key copied. Add it to apps/dashboard/.env as DASHBOARD_API_KEY and restart so Users, Audit, and other admin pages work."
+          : "New key copied. Update DASHBOARD_API_KEY (and SDK clients) or the console will lose BFF access.",
+      );
     } catch {
       setCopyHint("Could not copy.");
     }
@@ -59,15 +87,55 @@ export default function ApiKeyPage() {
     <>
       <h1>API key</h1>
       <p className={styles.muted}>
-        Instance key for SDK and BFF. In production it must stay server-side (<code>DASHBOARD_API_KEY</code>). After
-        rotation, update that environment variable immediately.
+        This is the instance key for the SDK and HTTP clients (<code>x-api-key</code>). On API startup, a key is
+        created automatically if none exists—the full secret is printed once in the <strong>API server logs</strong>.
+        You can also <strong>Generate</strong> or <strong>Regenerate</strong> here to see a new key once in the browser.
+        Never paste the <strong>masked</strong> preview (with dots) into <code>DASHBOARD_API_KEY</code>; only the raw{" "}
+        <code>hs_live_…</code> string works.
       </p>
 
       {isPending && <div className={styles.skeleton} style={{ height: 48, maxWidth: 360 }} />}
-      {isError && (
-        <p className={styles.errorBox}>{(error as Error).message}</p>
+      {isError && <p className={styles.errorBox}>{(error as Error).message}</p>}
+
+      {data?.status === "missing" && (
+        <div className={styles.card}>
+          <h2 style={{ marginTop: 0, fontSize: "1.125rem" }}>No instance API key yet</h2>
+          <p className={styles.muted}>
+            Generate one now. You will see the full key a single time—copy it into your app and into{" "}
+            <code>DASHBOARD_API_KEY</code> if you use the operator console.
+          </p>
+          {bootstrap.isError && (
+            <p className={styles.errorBox}>{(bootstrap.error as Error).message}</p>
+          )}
+          <button
+            type="button"
+            className={styles.btnPrimary}
+            disabled={bootstrap.isPending}
+            onClick={() => bootstrap.mutate()}
+          >
+            {bootstrap.isPending ? "Generating…" : "Generate instance API key"}
+          </button>
+        </div>
       )}
-      {data && (
+
+      {data?.status === "active" && !data.bffConfigured && (
+        <div
+          className={styles.card}
+          style={{
+            borderColor: "var(--appbase-accent-db-border)",
+            marginBottom: 16,
+            background: "var(--appbase-accent-db-bg)",
+          }}
+        >
+          <p className={styles.muted} style={{ margin: 0 }}>
+            <strong>Optional for full console:</strong> add this instance key to <code>apps/dashboard/.env</code> as{" "}
+            <code>DASHBOARD_API_KEY</code> and restart <code>pnpm dev</code>. Until then, Users, Audit, and Storage
+            admin views cannot load (this page works with your operator sign-in only).
+          </p>
+        </div>
+      )}
+
+      {data?.status === "active" && (
         <div className={styles.card}>
           <div className={styles.row} style={{ marginBottom: 16 }}>
             <code style={{ fontSize: "1rem" }}>{data.masked}</code>
@@ -80,13 +148,17 @@ export default function ApiKeyPage() {
               Regenerate key
             </button>
           </div>
-          {copyHint && <p className={styles.muted} style={{ marginBottom: 0 }}>{copyHint}</p>}
+          {copyHint && (
+            <p className={styles.muted} style={{ marginBottom: 0 }}>
+              {copyHint}
+            </p>
+          )}
         </div>
       )}
 
       {newKeyOnce && (
         <div className={styles.card} style={{ borderColor: "var(--appbase-accent-db-border)" }}>
-          <h2 style={{ marginTop: 0, fontSize: "1.125rem" }}>New key (shown once)</h2>
+          <h2 style={{ marginTop: 0, fontSize: "1.125rem" }}>Your key (shown once)</h2>
           <pre
             style={{
               padding: 12,
@@ -161,7 +233,7 @@ export default function ApiKeyPage() {
 
       <p className={styles.muted}>
         <button type="button" className={styles.btnGhost} onClick={() => void refetch()}>
-          Refresh metadata
+          Refresh
         </button>
       </p>
     </>

@@ -117,6 +117,16 @@ describe.sequential("admin routes", () => {
     expect(body.data.masked).toContain("••••");
   });
 
+  it("returns 401 for setup-status without bearer", async () => {
+    const res = await app.inject({ method: "GET", url: "/admin/api-key/setup-status" });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("returns 401 for GET /admin/api-key without x-api-key or bearer", async () => {
+    const res = await app.inject({ method: "GET", url: "/admin/api-key" });
+    expect(res.statusCode).toBe(401);
+  });
+
   it("rotates api key and invalidates the old one", async () => {
     const rotate = await app.inject({
       method: "POST",

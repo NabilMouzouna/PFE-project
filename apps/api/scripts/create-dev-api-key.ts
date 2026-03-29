@@ -1,8 +1,9 @@
 /**
- * Creates an API key for local development.
- * Run: pnpm --filter api exec tsx scripts/create-dev-api-key.ts
+ * Legacy CLI: creates an instance API key in the DB.
+ * Prefer the operator dashboard: Settings → API key → Generate (no env required for first key).
  *
- * Start the API at least once first so the DB exists.
+ * Use this script only for automation/CI. Start the API once so the DB exists.
+ * Run: pnpm --filter api exec tsx scripts/create-dev-api-key.ts
  */
 import { config as loadDotenv } from "dotenv";
 import path from "node:path";

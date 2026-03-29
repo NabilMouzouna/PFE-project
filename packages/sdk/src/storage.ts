@@ -1,5 +1,5 @@
-import type { AppBaseConfig } from "./appbase";
-import type { AuthClient } from "./auth";
+import type { AppBaseConfig } from "./appbase.js";
+import type { AuthClient } from "./auth.js";
 import type { FileRecord, BucketListResponse, UploadResponse } from "@appbase/types";
 
 /** File metadata row returned by the API (API-SPEC §6). */

@@ -3,7 +3,8 @@ import { createRemoteJWKSet } from "jose";
 const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 
 export function getApiBaseUrl(): string {
-  return (process.env.API_BASE_URL ?? "http://127.0.0.1:3000").replace(/\/$/, "");
+  const raw = (process.env.API_BASE_URL ?? "http://127.0.0.1:3000").trim();
+  return raw.replace(/\/$/, "");
 }
 
 export function getJwksForBaseUrl(baseUrl: string) {

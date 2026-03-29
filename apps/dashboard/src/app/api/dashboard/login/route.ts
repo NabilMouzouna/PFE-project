@@ -1,3 +1,4 @@
+import { fetchApiUpstream } from "@/lib/fetch-upstream";
 import { getApiBaseUrl } from "@/lib/jwks";
 import { nextResponseFromApiAuth } from "@/lib/apply-dashboard-session";
 
@@ -13,12 +14,15 @@ export async function POST(request: Request) {
   }
 
   const apiBase = getApiBaseUrl();
-  const upstream = await fetch(`${apiBase}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
+  const upstream = await fetchApiUpstream(
+    `${apiBase}/auth/login`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(body),
+    },
+    apiBase,
+  );
 
   return nextResponseFromApiAuth(upstream, { requireAdminRole: true });
 }

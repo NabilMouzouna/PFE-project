@@ -1,6 +1,6 @@
 import type { z } from "zod";
-import type { AppBaseConfig } from "./appbase";
-import type { AuthClient } from "./auth";
+import type { AppBaseConfig } from "./appbase.js";
+import type { AuthClient } from "./auth.js";
 import type { ChangeEvent, RecordId } from "@appbase/types";
 
 export type { ChangeEvent } from "@appbase/types";

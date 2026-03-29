@@ -1,4 +1,4 @@
-import type { AppBaseConfig } from "./appbase";
+import type { AppBaseConfig } from "./appbase.js";
 import type {
   Session,
   User,

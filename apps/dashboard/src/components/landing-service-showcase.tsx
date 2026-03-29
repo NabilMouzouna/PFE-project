@@ -11,8 +11,8 @@ type Block = {
   tagline: string;
   points: string[];
   icon: LucideIcon;
-  accent: string;
-  glow: string;
+  accentClass: string;
+  glowClass: string;
   reverse?: boolean;
 };
 
@@ -27,8 +27,8 @@ const blocks: Block[] = [
       "No third-party IdP required—ideal for air-gapped labs, classrooms, and field deployments.",
     ],
     icon: Shield,
-    accent: styles.accentAuth,
-    glow: styles.glowAuth,
+    accentClass: styles.accentAuth ?? "",
+    glowClass: styles.glowAuth ?? "",
   },
   {
     id: "db-deep",
@@ -40,8 +40,8 @@ const blocks: Block[] = [
       "SQLite at the core: simple backups, predictable performance on a single node.",
     ],
     icon: Database,
-    accent: styles.accentDb,
-    glow: styles.glowDb,
+    accentClass: styles.accentDb ?? "",
+    glowClass: styles.glowDb ?? "",
     reverse: true,
   },
   {
@@ -54,8 +54,8 @@ const blocks: Block[] = [
       "Scoped buckets so each app keeps its own object namespace.",
     ],
     icon: HardDrive,
-    accent: styles.accentStorage,
-    glow: styles.glowStorage,
+    accentClass: styles.accentStorage ?? "",
+    glowClass: styles.glowStorage ?? "",
   },
   {
     id: "network-deep",
@@ -67,8 +67,8 @@ const blocks: Block[] = [
       "Room to grow: discovery and clustering are on the roadmap—not a rewrite.",
     ],
     icon: Radio,
-    accent: styles.accentNet,
-    glow: styles.glowNet,
+    accentClass: styles.accentNet ?? "",
+    glowClass: styles.glowNet ?? "",
     reverse: true,
   },
 ];
@@ -125,8 +125,8 @@ function ShowcaseRow({ block, reduceMotion }: { block: Block; reduceMotion: bool
 
   return (
     <article ref={ref} id={block.id} className={rowClass}>
-      <div className={`${styles.iconStage} ${block.glow}`} aria-hidden>
-        <div className={`${styles.iconRing} ${block.accent}`}>
+      <div className={`${styles.iconStage} ${block.glowClass}`} aria-hidden>
+        <div className={`${styles.iconRing} ${block.accentClass}`}>
           <Icon className={styles.iconSvg} strokeWidth={1.75} size={44} />
         </div>
       </div>

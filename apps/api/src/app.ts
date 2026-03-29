@@ -6,6 +6,7 @@ import { registerDatabase } from "./plugins/database";
 import { registerInfrastructure } from "./plugins/infrastructure";
 import { registerAuth } from "./plugins/auth";
 import { registerStorage } from "./plugins/storage";
+import { ensureInstanceApiKeyAtStartup } from "./bootstrap/ensure-instance-api-key";
 import { registerRoutes } from "./routes";
 
 export interface BuildAppOptions {
@@ -25,6 +26,10 @@ export async function buildApp({ env }: BuildAppOptions): Promise<FastifyInstanc
   await registerStorage(app, env);
   await registerRoutes(app);
   registerMiddleware(app);
+
+  app.addHook("onReady", async () => {
+    await ensureInstanceApiKeyAtStartup(app);
+  });
 
   return app;
 }

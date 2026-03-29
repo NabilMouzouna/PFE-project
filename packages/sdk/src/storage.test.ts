@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { StorageClient } from "./storage";
-import type { AuthClient } from "./auth";
+import { StorageClient } from "./storage.js";
+import type { AuthClient } from "./auth.js";
 
 const mockConfig = {
   endpoint: "http://api.test",

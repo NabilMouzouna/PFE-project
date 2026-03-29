@@ -24,7 +24,14 @@ export default function LoginPage() {
         credentials: "include",
         body: JSON.stringify({ email, password }),
       });
-      const json = (await res.json()) as { success?: boolean; error?: { message?: string } };
+      const text = await res.text();
+      let json: { success?: boolean; error?: { message?: string } };
+      try {
+        json = text ? (JSON.parse(text) as typeof json) : {};
+      } catch {
+        setError("Invalid response from server. Is the AppBase API running and API_BASE_URL correct?");
+        return;
+      }
       if (!res.ok || !json.success) {
         setError(json.error?.message ?? "Sign-in failed.");
         return;

@@ -5,6 +5,9 @@ import { z } from "zod";
 import { hashPassword } from "better-auth/crypto";
 import { user, account, files, auditLog, apiKeys } from "@appbase/db/schema";
 import { API_KEY_PREFIX } from "../constants";
+import { API_KEY_INSTANCE_USER_ID } from "../constants/bootstrap-user";
+import { resolveInstanceApiKeyAccess } from "../lib/instance-api-key-access";
+import { getBearerToken, verifyAdminAccessToken } from "../lib/verify-admin-access-token";
 
 const apiErrorSchema = {
   type: "object",
@@ -20,6 +23,8 @@ const apiErrorSchema = {
 } as const;
 
 const apiKeySecurity = [{ apiKey: [] as string[] }];
+/** OpenAPI `security`; each entry is one of the named security schemes (alternate auth paths). */
+const instanceKeySecurity: ReadonlyArray<Record<string, readonly string[]>> = [{ apiKey: [] }, { bearerAuth: [] }];
 
 function apiSuccess<T>(data: T) {
   return { success: true as const, data };
@@ -40,6 +45,20 @@ const rotateBodySchema = z.object({}).strict();
 const setPasswordBodySchema = z.object({
   newPassword: z.string().min(8).max(128),
 });
+
+async function ensureApiKeyBootstrapUser(app: FastifyInstance): Promise<void> {
+  const existing = await app.db.select({ id: user.id }).from(user).where(eq(user.id, API_KEY_INSTANCE_USER_ID)).limit(1);
+  if (existing[0]) return;
+  const now = new Date();
+  await app.db.insert(user).values({
+    id: API_KEY_INSTANCE_USER_ID,
+    name: "App Bootstrap",
+    email: "bootstrap@appbase.local",
+    emailVerified: false,
+    createdAt: now,
+    updatedAt: now,
+  });
+}
 
 export async function registerAdminRoutes(app: FastifyInstance) {
   app.get(
@@ -261,12 +280,155 @@ export async function registerAdminRoutes(app: FastifyInstance) {
   );
 
   app.get(
+    "/admin/api-key/setup-status",
+    {
+      schema: {
+        tags: ["admin"],
+        summary: "Instance API key status (operator JWT)",
+        description:
+          "For the operator console before `x-api-key` is configured. Requires admin Bearer token only.",
+        security: [{ bearerAuth: [] as string[] }],
+        response: {
+          200: {
+            type: "object",
+            properties: {
+              success: { type: "boolean", const: true },
+              data: {
+                type: "object",
+                properties: {
+                  status: { type: "string", enum: ["missing", "active"] },
+                  keyPrefix: { type: "string" },
+                  masked: { type: "string" },
+                  lastRotatedAt: { type: "string", format: "date-time", nullable: true },
+                },
+                required: ["status"],
+              },
+            },
+            required: ["success", "data"],
+          },
+          401: apiErrorSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const bearer = getBearerToken(request);
+      if (!bearer || !(await verifyAdminAccessToken(bearer, app))) {
+        return reply.status(401).send(apiError("UNAUTHORIZED", "Admin access token required."));
+      }
+
+      const rows = await app.db
+        .select()
+        .from(apiKeys)
+        .where(eq(apiKeys.referenceId, API_KEY_INSTANCE_USER_ID))
+        .limit(1);
+      const row = rows[0];
+      if (!row) {
+        return apiSuccess({ status: "missing" as const });
+      }
+
+      const keyPrefix = row.prefix && row.prefix.length > 0 ? row.prefix : API_KEY_PREFIX;
+      const masked = maskInstanceKey(row.prefix, row.start);
+      const lastRotatedAt =
+        row.updatedAt instanceof Date ? row.updatedAt.toISOString() : row.updatedAt != null ? String(row.updatedAt) : null;
+
+      return apiSuccess({
+        status: "active" as const,
+        keyPrefix,
+        masked,
+        lastRotatedAt,
+      });
+    },
+  );
+
+  app.post<{ Body: unknown }>(
+    "/admin/api-key/bootstrap",
+    {
+      schema: {
+        tags: ["admin"],
+        summary: "Create first instance API key (operator JWT)",
+        description:
+          "One-time when no instance key exists. Use the operator dashboard; then copy the key for the SDK and optionally set DASHBOARD_API_KEY.",
+        security: [{ bearerAuth: [] as string[] }],
+        body: { type: "object", additionalProperties: true },
+        response: {
+          200: {
+            type: "object",
+            properties: {
+              success: { type: "boolean", const: true },
+              data: { type: "object", properties: { key: { type: "string" } }, required: ["key"] },
+            },
+            required: ["success", "data"],
+          },
+          401: apiErrorSchema,
+          409: apiErrorSchema,
+          500: apiErrorSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const bearer = getBearerToken(request);
+      if (!bearer || !(await verifyAdminAccessToken(bearer, app))) {
+        return reply.status(401).send(apiError("UNAUTHORIZED", "Admin access token required."));
+      }
+
+      const existing = await app.db
+        .select({ id: apiKeys.id })
+        .from(apiKeys)
+        .where(eq(apiKeys.referenceId, API_KEY_INSTANCE_USER_ID))
+        .limit(1);
+      if (existing[0]) {
+        return reply
+          .status(409)
+          .send(
+            apiError(
+              "ALREADY_EXISTS",
+              "An instance API key already exists. Use Regenerate in the console or x-api-key with GET /admin/api-key.",
+            ),
+          );
+      }
+
+      await ensureApiKeyBootstrapUser(app);
+
+      try {
+        const created = (await app.auth.api.createApiKey({
+          body: {
+            name: "instance",
+            userId: API_KEY_INSTANCE_USER_ID,
+          },
+        })) as { key?: string };
+
+        const newKey = created.key;
+        if (!newKey) {
+          return reply.status(500).send(apiError("INTERNAL_ERROR", "Failed to create instance API key."));
+        }
+
+        const now = new Date();
+        await app.db.insert(auditLog).values({
+          id: randomUUID(),
+          action: "api_key.bootstrap",
+          userId: null,
+          resource: "api_keys",
+          resourceId: API_KEY_INSTANCE_USER_ID,
+          metadata: {},
+          createdAt: now,
+        });
+
+        return apiSuccess({ key: newKey });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        request.log.error({ err }, "admin.api_key.bootstrap.failed");
+        return reply.status(500).send(apiError("INTERNAL_ERROR", msg || "Bootstrap failed."));
+      }
+    },
+  );
+
+  app.get(
     "/admin/api-key",
     {
       schema: {
         tags: ["admin"],
         summary: "Instance API key metadata",
-        security: apiKeySecurity,
+        security: instanceKeySecurity,
         response: {
           200: {
             type: "object",
@@ -285,22 +447,16 @@ export async function registerAdminRoutes(app: FastifyInstance) {
             required: ["success", "data"],
           },
           401: apiErrorSchema,
+          403: apiErrorSchema,
           404: apiErrorSchema,
         },
       },
     },
     async (request, reply) => {
-      const keyId = request.apiKey?.id;
-      if (!keyId || typeof keyId !== "string") {
-        return reply.status(404).send(apiError("NOT_FOUND", "API key context missing."));
-      }
+      const access = await resolveInstanceApiKeyAccess(request, reply, app);
+      if (!access) return;
 
-      const rows = await app.db.select().from(apiKeys).where(eq(apiKeys.id, keyId)).limit(1);
-      const row = rows[0];
-      if (!row) {
-        return reply.status(404).send(apiError("NOT_FOUND", "API key not found."));
-      }
-
+      const row = access.row;
       const keyPrefix = row.prefix && row.prefix.length > 0 ? row.prefix : API_KEY_PREFIX;
       const masked = maskInstanceKey(row.prefix, row.start);
       const lastRotatedAt =
@@ -320,7 +476,7 @@ export async function registerAdminRoutes(app: FastifyInstance) {
       schema: {
         tags: ["admin"],
         summary: "Rotate instance API key",
-        security: apiKeySecurity,
+        security: instanceKeySecurity,
         body: { type: "object", additionalProperties: true },
         response: {
           200: {
@@ -337,6 +493,7 @@ export async function registerAdminRoutes(app: FastifyInstance) {
           },
           400: apiErrorSchema,
           401: apiErrorSchema,
+          403: apiErrorSchema,
           404: apiErrorSchema,
           500: apiErrorSchema,
         },
@@ -348,18 +505,10 @@ export async function registerAdminRoutes(app: FastifyInstance) {
         return reply.status(400).send(apiError("VALIDATION_ERROR", "Invalid body."));
       }
 
-      const keyId = request.apiKey?.id;
-      if (!keyId || typeof keyId !== "string") {
-        return reply.status(404).send(apiError("NOT_FOUND", "API key context missing."));
-      }
+      const access = await resolveInstanceApiKeyAccess(request, reply, app);
+      if (!access) return;
 
-      const rows = await app.db.select().from(apiKeys).where(eq(apiKeys.id, keyId)).limit(1);
-      const row = rows[0];
-      if (!row) {
-        return reply.status(404).send(apiError("NOT_FOUND", "API key not found."));
-      }
-
-      const referenceId = row.referenceId;
+      const referenceId = access.referenceId;
 
       try {
         await app.db.delete(apiKeys).where(eq(apiKeys.referenceId, referenceId));
