@@ -31,12 +31,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Publish @appbase/types
-        run: pnpm --filter @appbase/types publish --access public --no-git-checks
+      - name: Publish @appbase-pfe/types
+        run: pnpm --filter @appbase-pfe/types publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish @appbase/sdk
-        run: pnpm --filter @appbase/sdk publish --access public --no-git-checks
+      - name: Publish @appbase-pfe/sdk
+        run: pnpm --filter @appbase-pfe/sdk publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

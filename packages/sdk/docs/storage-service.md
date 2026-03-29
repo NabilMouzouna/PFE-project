@@ -11,7 +11,7 @@ Typed client for **API-SPEC §6** (`docs/API-SPEC.md` in the monorepo) — uploa
 ## Quick start
 
 ```ts
-import { AppBase } from "@appbase/sdk";
+import { AppBase } from "@appbase-pfe/sdk";
 
 const appbase = AppBase.init({
   endpoint: "http://localhost:3000",
@@ -81,7 +81,7 @@ await appbase.storage.upload("docs", new Blob(["hello"], { type: "text/plain" })
 ### Node — Buffer
 
 ```ts
-import { AppBase } from "@appbase/sdk";
+import { AppBase } from "@appbase-pfe/sdk";
 import fs from "node:fs";
 
 const appbase = AppBase.init({
@@ -115,7 +115,7 @@ await appbase.storage.upload("raw", createReadStream("./big.bin"), {
 ## Error handling
 
 ```ts
-import { AppBase, StorageError } from "@appbase/sdk";
+import { AppBase, StorageError } from "@appbase-pfe/sdk";
 
 try {
   await appbase.storage.download("b", id, { as: "blob" });

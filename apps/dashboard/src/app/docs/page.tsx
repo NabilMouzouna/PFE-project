@@ -29,10 +29,7 @@ const sections = [
       <ul>
         <li>Start the API container or <code>pnpm --filter api dev</code>.</li>
         <li>Create an instance API key in the dashboard: Settings → API key → Generate; copy it for the SDK.</li>
-        <li>
-          Point the dashboard at <code>API_BASE_URL</code>. Set <code>DASHBOARD_API_KEY</code> to that same key when you
-          need Users, Audit, and other BFF-backed admin pages.
-        </li>
+        <li>Point the dashboard at <code>API_BASE_URL</code> and sign in as an operator.</li>
         <li>Register the first operator from this site or promote an existing user to admin.</li>
       </ul>
     ),

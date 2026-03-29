@@ -119,13 +119,13 @@ For a deeper, implementation-level view of both the current M1 architecture and 
 
 ### Using the SDK from npm
 
-The client libraries **`@appbase/types`** and **`@appbase/sdk`** are published to the **public npm registry** (see [ADR-007](./docs/adr/ADR-007-sdk-package-distribution.md) for scope and naming). Install into any app that talks to your deployed AppBase API:
+The client libraries **`@appbase-pfe/types`** and **`@appbase-pfe/sdk`** are published to the **public npm registry** (see [ADR-007](./docs/adr/ADR-007-sdk-package-distribution.md) for scope and naming). Install into any app that talks to your deployed AppBase API:
 
 ```bash
-npm install @appbase/sdk
+npm install @appbase-pfe/sdk
 ```
 
-Point `AppBase.init` at your API base URL and credentials; the wire format is defined in [`docs/API-SPEC.md`](./docs/API-SPEC.md). Optional React exports: `import { … } from "@appbase/sdk/react"` (install `react` ≥ 18).
+Point `AppBase.init` at your API base URL and credentials; the wire format is defined in [`docs/API-SPEC.md`](./docs/API-SPEC.md). Optional React exports: `import { … } from "@appbase-pfe/sdk/react"` (install `react` ≥ 18).
 
 Maintainers: release process and pack checks are in [`docs/PUBLISHING-SDK.md`](./docs/PUBLISHING-SDK.md).
 
@@ -161,7 +161,7 @@ AppBase/
 │   ├── api/              # Core BaaS API
 │   └── dashboard/        # Admin UI (Next.js)
 ├── packages/
-│   ├── sdk/              # JS/TS client SDK (@appbase/sdk)
+│   ├── sdk/              # JS/TS client SDK (@appbase-pfe/sdk)
 │   ├── db/               # Schema + migrations
 │   ├── types/            # Shared TypeScript interfaces
 │   └── config/           # Shared tsconfig, eslint, prettier
@@ -264,7 +264,7 @@ In M1, password reset is handled through the app-specific dashboard rather than 
 The SDK is what makes this feel like Amplify and not just a REST API. It needs to do three things internally: store and refresh tokens automatically, inject the ID token into every storage/db request header, and manage the SSE subscription lifecycle.
 
 ```typescript
-import { AppBase } from '@appbase/sdk'
+import { AppBase } from '@appbase-pfe/sdk'
 
 const client = AppBase.init({
   endpoint: 'http://localhost:3000',

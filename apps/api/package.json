@@ -18,7 +18,7 @@
   "dependencies": {
     "@appbase/db": "workspace:*",
     "@appbase/storage": "workspace:*",
-    "@appbase/types": "workspace:*",
+    "@appbase-pfe/types": "workspace:*",
     "drizzle-orm": "^0.45.1",
     "@better-auth/api-key": "^1.5.5",
     "@fastify/cookie": "^11.0.2",
@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@appbase/config": "workspace:*",
-    "@appbase/sdk": "workspace:*",
+    "@appbase-pfe/sdk": "workspace:*",
     "@types/node": "^22.13.14",
     "pino-pretty": "^13.0.0",
     "tsx": "^4.21.0",

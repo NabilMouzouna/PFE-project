@@ -1,6 +1,6 @@
 import type { AppBaseConfig } from "./appbase.js";
 import type { AuthClient } from "./auth.js";
-import type { FileRecord, BucketListResponse, UploadResponse } from "@appbase/types";
+import type { FileRecord, BucketListResponse, UploadResponse } from "@appbase-pfe/types";
 
 /** File metadata row returned by the API (API-SPEC §6). */
 export type StorageFile = FileRecord;

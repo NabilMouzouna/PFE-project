@@ -1,5 +1,5 @@
 {
-  "name": "@appbase/sdk",
+  "name": "@appbase-pfe/sdk",
   "version": "0.1.0",
   "description": "JavaScript/TypeScript client for AppBase — auth, database, and storage APIs.",
   "type": "module",
@@ -45,7 +45,7 @@
     "prepublishOnly": "pnpm test && pnpm run build"
   },
   "dependencies": {
-    "@appbase/types": "workspace:^0.1.0",
+    "@appbase-pfe/types": "workspace:^0.1.0",
     "zod": "^3.24.0"
   },
   "peerDependencies": {

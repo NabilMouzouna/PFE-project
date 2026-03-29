@@ -1,4 +1,4 @@
-import { DbError, StorageError } from "@appbase/sdk";
+import { DbError, StorageError } from "@appbase-pfe/sdk";
 
 /** Errors that mean the client cannot talk to the API correctly — clear local session and re-authenticate. */
 export function shouldClearSessionForApiError(err: unknown): boolean {

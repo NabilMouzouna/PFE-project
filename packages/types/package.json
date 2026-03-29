@@ -1,5 +1,5 @@
 {
-  "name": "@appbase/types",
+  "name": "@appbase-pfe/types",
   "version": "0.1.0",
   "description": "Shared TypeScript types for the AppBase HTTP API (auth, db, storage, errors).",
   "type": "module",

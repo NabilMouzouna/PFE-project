@@ -41,7 +41,7 @@ export async function ensureInstanceApiKeyAtStartup(app: FastifyInstance): Promi
     if (key) {
       app.log.warn(
         { event: "instance_api_key_auto_created" },
-        `Instance API key created at startup. Set apps/dashboard/.env DASHBOARD_API_KEY to this value (and use x-api-key in clients): ${key}`,
+        `Instance API key created at startup. Copy this value for your SDK/client x-api-key configuration: ${key}`,
       );
     } else {
       app.log.error("instance_api_key_auto_create returned no key");

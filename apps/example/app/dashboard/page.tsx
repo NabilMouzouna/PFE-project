@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { useAppBase, useAuth, useRequireAuth } from "@/lib/appbase";
 import { shouldClearSessionForApiError } from "@/lib/api-errors";
-import type { DbRecord } from "@appbase/sdk";
+import type { DbRecord } from "@appbase-pfe/sdk";
 import { Button, Input, Textarea, Modal, Badge, CardHeader } from "@/components/ui";
 import { ProfileModal } from "@/components/ProfileModal";
 import {

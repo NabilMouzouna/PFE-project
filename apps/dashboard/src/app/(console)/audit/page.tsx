@@ -3,8 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import styles from "@/components/console-shell.module.css";
-import { ConsoleAdminBffPlaceholder } from "@/components/console-admin-bff-placeholder";
-import { bffData, isAdminBffConfigError } from "@/lib/bff-client";
+import { bffData } from "@/lib/bff-client";
 
 type AuditItem = {
   id: string;
@@ -73,12 +72,7 @@ export default function AuditPage() {
           <div className={styles.skeleton} style={{ height: 14 }} />
         </div>
       )}
-      {isError &&
-        (isAdminBffConfigError(error) ? (
-          <ConsoleAdminBffPlaceholder />
-        ) : (
-          <p className={styles.errorBox}>{(error as Error).message}</p>
-        ))}
+      {isError && <p className={styles.errorBox}>{(error as Error).message}</p>}
 
       {data && data.items.length === 0 && <p className={styles.muted}>No audit entries match.</p>}
 

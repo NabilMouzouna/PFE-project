@@ -1,6 +1,6 @@
 # Example app (`apps/example`)
 
-Modern Next.js todo application using `@appbase/sdk` for auth and database access.
+Modern Next.js todo application using `@appbase-pfe/sdk` for auth and database access.
 
 ## Purpose
 

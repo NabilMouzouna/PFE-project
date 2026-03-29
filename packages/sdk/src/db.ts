@@ -1,9 +1,9 @@
 import type { z } from "zod";
 import type { AppBaseConfig } from "./appbase.js";
 import type { AuthClient } from "./auth.js";
-import type { ChangeEvent, RecordId } from "@appbase/types";
+import type { ChangeEvent, RecordId } from "@appbase-pfe/types";
 
-export type { ChangeEvent } from "@appbase/types";
+export type { ChangeEvent } from "@appbase-pfe/types";
 
 /** Record returned by the API — includes id, collection, ownerId, data, timestamps. */
 export interface DbRecord<T = Record<string, unknown>> {

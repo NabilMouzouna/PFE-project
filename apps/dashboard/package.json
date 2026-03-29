@@ -10,8 +10,8 @@
     "lint": "eslint src"
   },
   "dependencies": {
-    "@appbase/sdk": "workspace:*",
-    "@appbase/types": "workspace:*",
+    "@appbase-pfe/sdk": "workspace:*",
+    "@appbase-pfe/types": "workspace:*",
     "@tanstack/react-query": "^5.95.2",
     "jose": "^6.2.1",
     "lucide-react": "^1.7.0",

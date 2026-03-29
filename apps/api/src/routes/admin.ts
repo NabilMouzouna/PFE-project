@@ -7,6 +7,7 @@ import { user, account, files, auditLog, apiKeys } from "@appbase/db/schema";
 import { API_KEY_PREFIX } from "../constants";
 import { API_KEY_INSTANCE_USER_ID } from "../constants/bootstrap-user";
 import { resolveInstanceApiKeyAccess } from "../lib/instance-api-key-access";
+import { requireAdminAccess } from "../lib/require-admin-access";
 import { getBearerToken, verifyAdminAccessToken } from "../lib/verify-admin-access-token";
 
 const apiErrorSchema = {
@@ -22,7 +23,8 @@ const apiErrorSchema = {
   required: ["success", "error"],
 } as const;
 
-const apiKeySecurity = [{ apiKey: [] as string[] }];
+/** OpenAPI `security`; each entry is one of the named security schemes (alternate auth paths). */
+const adminSecurity: ReadonlyArray<Record<string, readonly string[]>> = [{ apiKey: [] }, { bearerAuth: [] }];
 /** OpenAPI `security`; each entry is one of the named security schemes (alternate auth paths). */
 const instanceKeySecurity: ReadonlyArray<Record<string, readonly string[]>> = [{ apiKey: [] }, { bearerAuth: [] }];
 
@@ -68,7 +70,7 @@ export async function registerAdminRoutes(app: FastifyInstance) {
         tags: ["admin"],
         summary: "List users",
         description: "All end-users and operators in this instance (x-api-key).",
-        security: apiKeySecurity,
+        security: adminSecurity,
         response: {
           200: {
             type: "object",
@@ -103,7 +105,8 @@ export async function registerAdminRoutes(app: FastifyInstance) {
         },
       },
     },
-    async () => {
+    async (request, reply) => {
+      if (!(await requireAdminAccess(request, reply, app))) return;
       const rows = await app.db
         .select({
           id: user.id,
@@ -137,7 +140,7 @@ export async function registerAdminRoutes(app: FastifyInstance) {
       schema: {
         tags: ["admin"],
         summary: "Storage usage",
-        security: apiKeySecurity,
+        security: adminSecurity,
         response: {
           200: {
             type: "object",
@@ -170,7 +173,8 @@ export async function registerAdminRoutes(app: FastifyInstance) {
         },
       },
     },
-    async () => {
+    async (request, reply) => {
+      if (!(await requireAdminAccess(request, reply, app))) return;
       const byBucketRows = await app.db
         .select({
           bucket: files.bucket,
@@ -207,7 +211,7 @@ export async function registerAdminRoutes(app: FastifyInstance) {
       schema: {
         tags: ["admin"],
         summary: "Audit log",
-        security: apiKeySecurity,
+        security: adminSecurity,
         querystring: {
           type: "object",
           properties: {
@@ -238,7 +242,8 @@ export async function registerAdminRoutes(app: FastifyInstance) {
         },
       },
     },
-    async (request) => {
+    async (request, reply) => {
+      if (!(await requireAdminAccess(request, reply, app))) return;
       const limitRaw = request.query.limit != null ? Number(request.query.limit) : 50;
       const offsetRaw = request.query.offset != null ? Number(request.query.offset) : 0;
       const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(1, limitRaw), 200) : 50;
@@ -551,7 +556,7 @@ export async function registerAdminRoutes(app: FastifyInstance) {
       schema: {
         tags: ["admin"],
         summary: "Set user password (admin)",
-        security: apiKeySecurity,
+        security: adminSecurity,
         params: {
           type: "object",
           required: ["id"],
@@ -578,6 +583,7 @@ export async function registerAdminRoutes(app: FastifyInstance) {
       },
     },
     async (request, reply) => {
+      if (!(await requireAdminAccess(request, reply, app))) return;
       const parsed = setPasswordBodySchema.safeParse(request.body);
       if (!parsed.success) {
         const msg = parsed.error.issues.map((i) => i.message).join("; ");

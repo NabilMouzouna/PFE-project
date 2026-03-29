@@ -11,7 +11,7 @@
 
 Each M1 **BaaS unit** ships with `apps/dashboard` (Next.js, typically `localhost:3001`). The dashboard is the **operator-facing** UI for that single app instance: manage the **instance API key**, inspect **end-users**, view **storage usage** and **audit log**, and perform **admin-mediated** tasks (e.g. password reset) described in [ADR-003](./ADR-003-auth-implementation.md).
 
-**Product reference:** Firebase-style “project console” — not the public SDK contract. End-user apps use `@appbase/sdk` and `/auth/*`, `/db/*`, `/storage/*`; the dashboard uses **internal** auth and **admin** API surfaces.
+**Product reference:** Firebase-style “project console” — not the public SDK contract. End-user apps use `@appbase-pfe/sdk` and `/auth/*`, `/db/*`, `/storage/*`; the dashboard uses **internal** auth and **admin** API surfaces.
 
 **Constraints**
 

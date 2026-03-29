@@ -6,7 +6,7 @@ import type {
   LoginRequest,
   RefreshResponse,
   LogoutResponse,
-} from "@appbase/types";
+} from "@appbase-pfe/types";
 
 /** Auth state for conditional render and protected routes. */
 export type AuthState = {

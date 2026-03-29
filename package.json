@@ -7,7 +7,7 @@
     }
   },
   "scripts": {
-    "postinstall": "turbo run build --filter=@appbase/sdk",
+    "postinstall": "turbo run build --filter=@appbase-pfe/sdk",
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",

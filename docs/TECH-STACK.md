@@ -62,7 +62,7 @@ The ORM and database strategy are detailed in `docs/adr/ADR-002-orm-and-migratio
 
 ## Client SDK
 
-- **Package**: `@appbase/sdk` (TypeScript)  
+- **Package**: `@appbase-pfe/sdk` (TypeScript)  
   - Wraps all three BaaS services (Auth, Storage, Database) behind a single client interface.
   - Handles token storage and refresh, header injection, and SSE subscription lifecycle for real-time updates.
 

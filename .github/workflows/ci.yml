@@ -42,8 +42,8 @@ jobs:
       - name: Unit tests (@appbase/db)
         run: pnpm --filter @appbase/db test
 
-      - name: Unit tests (@appbase/sdk)
-        run: pnpm --filter @appbase/sdk test
+      - name: Unit tests (@appbase-pfe/sdk)
+        run: pnpm --filter @appbase-pfe/sdk test
 
       - name: Unit tests (@appbase/storage)
         run: pnpm --filter @appbase/storage test

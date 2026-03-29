@@ -9,7 +9,7 @@
 
 ## Context
 
-AppBase exposes a **document-style database API** under `/db/*` for app developers using `@appbase/sdk`. The public contract is defined in `[API-SPEC.md](../API-SPEC.md)` §7; the physical model and flow are described in `[ARCHITECTURE.md](../ARCHITECTURE.md)` §3.4, §4 (`records` table), and §5 (route table).
+AppBase exposes a **document-style database API** under `/db/*` for app developers using `@appbase-pfe/sdk`. The public contract is defined in `[API-SPEC.md](../API-SPEC.md)` §7; the physical model and flow are described in `[ARCHITECTURE.md](../ARCHITECTURE.md)` §3.4, §4 (`records` table), and §5 (route table).
 
 **Product goals**
 
@@ -69,7 +69,7 @@ Write `**audit_log`** rows for `record.create`, `record.update`, `record.delete`
 
 ### 8. SDK alignment (out of scope for this ADR but contract-bound)
 
-The `@appbase/sdk` should gain typed helpers for collections mirroring API-SPEC; implementation is tracked in the companion ticket, not here.
+The `@appbase-pfe/sdk` should gain typed helpers for collections mirroring API-SPEC; implementation is tracked in the companion ticket, not here.
 
 ---
 

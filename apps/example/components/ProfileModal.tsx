@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppBase, useAuth } from "@/lib/appbase";
-import type { DbRecord } from "@appbase/sdk";
-import { StorageError } from "@appbase/sdk";
+import type { DbRecord } from "@appbase-pfe/sdk";
+import { StorageError } from "@appbase-pfe/sdk";
 import { Button, Input, Textarea, CardHeader, Modal } from "@/components/ui";
 import {
   AVATAR_BUCKET,

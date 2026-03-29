@@ -1,4 +1,4 @@
-# @appbase/sdk
+# @appbase-pfe/sdk
 
 JavaScript/TypeScript SDK for [AppBase](https://github.com/NabilMouzouna/NubleCloud-PFE).
 
@@ -7,17 +7,17 @@ JavaScript/TypeScript SDK for [AppBase](https://github.com/NabilMouzouna/NubleCl
 Use the public npm registry. The scope **`@appbase`** must exist on npm for your organization (see [ADR-007](../../docs/adr/ADR-007-sdk-package-distribution.md)); if you publish under a different scope, replace it in install commands and imports.
 
 ```bash
-npm install @appbase/sdk
+npm install @appbase-pfe/sdk
 ```
 
-`@appbase/sdk` depends on **`@appbase/types`** at a compatible semver range; npm installs both.
+`@appbase-pfe/sdk` depends on **`@appbase-pfe/types`** at a compatible semver range; npm installs both.
 
 **HTTP contract:** [`docs/API-SPEC.md`](../../docs/API-SPEC.md).
 
 ## Quick start
 
 ```ts
-import { AppBase } from "@appbase/sdk";
+import { AppBase } from "@appbase-pfe/sdk";
 
 const appbase = AppBase.init({
   endpoint: "http://localhost:3000",
@@ -37,7 +37,7 @@ const { items } = await todos.list();
 `react` is an **optional** peer dependency. Use the subpath when you need hooks / provider:
 
 ```tsx
-import { AppBaseProvider, useAppBase, useAuth } from "@appbase/sdk/react";
+import { AppBaseProvider, useAppBase, useAuth } from "@appbase-pfe/sdk/react";
 ```
 
 Install `react` in your app (`>=18`).

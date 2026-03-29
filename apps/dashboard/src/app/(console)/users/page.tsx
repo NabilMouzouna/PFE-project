@@ -3,8 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import styles from "@/components/console-shell.module.css";
-import { ConsoleAdminBffPlaceholder } from "@/components/console-admin-bff-placeholder";
-import { bffData, bffJson, BffError, isAdminBffConfigError } from "@/lib/bff-client";
+import { bffData, bffJson, BffError } from "@/lib/bff-client";
 
 type UserRow = {
   id: string;
@@ -56,12 +55,7 @@ export default function UsersPage() {
           <div className={styles.skeleton} style={{ height: 14 }} />
         </div>
       )}
-      {isError &&
-        (isAdminBffConfigError(error) ? (
-          <ConsoleAdminBffPlaceholder />
-        ) : (
-          <p className={styles.errorBox}>{(error as Error).message}</p>
-        ))}
+      {isError && <p className={styles.errorBox}>{(error as Error).message}</p>}
 
       {data && data.users.length === 0 && <p className={styles.muted}>No users yet.</p>}
 

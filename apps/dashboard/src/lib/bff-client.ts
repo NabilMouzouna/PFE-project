@@ -11,14 +11,6 @@ export class BffError extends Error {
   }
 }
 
-/** BFF admin routes that require `DASHBOARD_API_KEY` (full raw key, not the masked preview). */
-export function isAdminBffConfigError(error: unknown): error is BffError {
-  return (
-    error instanceof BffError &&
-    (error.code === "DASHBOARD_API_KEY_MISSING" || error.code === "INVALID_DASHBOARD_API_KEY")
-  );
-}
-
 export async function bffJson<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...init,

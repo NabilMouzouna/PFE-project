@@ -5,14 +5,13 @@ import { useState } from "react";
 import styles from "@/components/console-shell.module.css";
 import { bffData, bffJson } from "@/lib/bff-client";
 
-type ApiKeyMissing = { status: "missing"; bffConfigured: boolean };
+type ApiKeyMissing = { status: "missing" };
 
 type ApiKeyActive = {
   status: "active";
   keyPrefix: string;
   masked: string;
   lastRotatedAt: string | null;
-  bffConfigured: boolean;
 };
 
 type ApiKeyState = ApiKeyMissing | ApiKeyActive;
@@ -73,11 +72,7 @@ export default function ApiKeyPage() {
     if (!newKeyOnce) return;
     try {
       await navigator.clipboard.writeText(newKeyOnce);
-      setCopyHint(
-        data?.status === "active" && !data.bffConfigured
-          ? "Key copied. Add it to apps/dashboard/.env as DASHBOARD_API_KEY and restart so Users, Audit, and other admin pages work."
-          : "New key copied. Update DASHBOARD_API_KEY (and SDK clients) or the console will lose BFF access.",
-      );
+      setCopyHint("New key copied. Update your SDK clients/app config that use x-api-key.");
     } catch {
       setCopyHint("Could not copy.");
     }
@@ -90,8 +85,7 @@ export default function ApiKeyPage() {
         This is the instance key for the SDK and HTTP clients (<code>x-api-key</code>). On API startup, a key is
         created automatically if none exists—the full secret is printed once in the <strong>API server logs</strong>.
         You can also <strong>Generate</strong> or <strong>Regenerate</strong> here to see a new key once in the browser.
-        Never paste the <strong>masked</strong> preview (with dots) into <code>DASHBOARD_API_KEY</code>; only the raw{" "}
-        <code>hs_live_…</code> string works.
+        The dashboard itself does not require an API key env var.
       </p>
 
       {isPending && <div className={styles.skeleton} style={{ height: 48, maxWidth: 360 }} />}
@@ -100,10 +94,7 @@ export default function ApiKeyPage() {
       {data?.status === "missing" && (
         <div className={styles.card}>
           <h2 style={{ marginTop: 0, fontSize: "1.125rem" }}>No instance API key yet</h2>
-          <p className={styles.muted}>
-            Generate one now. You will see the full key a single time—copy it into your app and into{" "}
-            <code>DASHBOARD_API_KEY</code> if you use the operator console.
-          </p>
+          <p className={styles.muted}>Generate one now. You will see the full key a single time.</p>
           {bootstrap.isError && (
             <p className={styles.errorBox}>{(bootstrap.error as Error).message}</p>
           )}
@@ -115,23 +106,6 @@ export default function ApiKeyPage() {
           >
             {bootstrap.isPending ? "Generating…" : "Generate instance API key"}
           </button>
-        </div>
-      )}
-
-      {data?.status === "active" && !data.bffConfigured && (
-        <div
-          className={styles.card}
-          style={{
-            borderColor: "var(--appbase-accent-db-border)",
-            marginBottom: 16,
-            background: "var(--appbase-accent-db-bg)",
-          }}
-        >
-          <p className={styles.muted} style={{ margin: 0 }}>
-            <strong>Optional for full console:</strong> add this instance key to <code>apps/dashboard/.env</code> as{" "}
-            <code>DASHBOARD_API_KEY</code> and restart <code>pnpm dev</code>. Until then, Users, Audit, and Storage
-            admin views cannot load (this page works with your operator sign-in only).
-          </p>
         </div>
       )}
 

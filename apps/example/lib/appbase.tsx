@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { AppBase } from "@appbase/sdk";
-import { AppBaseProvider as SDKProvider } from "@appbase/sdk/react";
+import { AppBase } from "@appbase-pfe/sdk";
+import { AppBaseProvider as SDKProvider } from "@appbase-pfe/sdk/react";
 import { getPublicEnv } from "./env";
 
 export function AppBaseProvider({ children }: { children: React.ReactNode }) {
@@ -19,4 +19,4 @@ export function AppBaseProvider({ children }: { children: React.ReactNode }) {
   return <SDKProvider appBase={appBase}>{children}</SDKProvider>;
 }
 
-export { useAppBase, useAuth, useRequireAuth } from "@appbase/sdk/react";
+export { useAppBase, useAuth, useRequireAuth } from "@appbase-pfe/sdk/react";

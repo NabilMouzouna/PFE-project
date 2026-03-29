@@ -5,7 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, beforeAll, afterAll, beforeEach } from "vitest";
-import { AppBase } from "@appbase/sdk";
+import { AppBase } from "@appbase-pfe/sdk";
 import { buildApp } from "../app";
 import { loadEnv } from "../config/env";
 
