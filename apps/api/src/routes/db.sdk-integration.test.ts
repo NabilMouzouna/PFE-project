@@ -4,7 +4,7 @@
  */
 import { describe, expect, it, beforeAll, afterAll, beforeEach } from "vitest";
 import { z } from "zod";
-import { AppBase } from "@appbase/sdk";
+import { AppBase } from "@appbase-pfe/sdk";
 import { buildApp } from "../app";
 import { loadEnv } from "../config/env";
 

@@ -261,6 +261,8 @@ If a self-service reset flow is introduced later, it will be added as a new publ
 }
 ```
 
+**M1 implementation notes:** File bytes are written by a `StorageDriver` (default: local filesystem under `STORAGE_ROOT`; production default `/app/data/storage` with a mounted volume per ADR-005). SQLite rows use opaque `storage_path` keys, plus `logical_file_id` and `version` for future metadata-based versioning (not filename suffix rules). **Deletes** commit metadata removal before best-effort blob removal, so orphan objects on disk are possible if cleanup fails; use reconciliation + manual remediation as documented in `docs/STORAGE-OPERATIONS.md`. Operator checklist: same file.
+
 ### 6.1 POST `/storage/buckets/:bucket/upload`
 
 Uploads a file to a bucket scoped to the authenticated user.
@@ -550,4 +552,5 @@ data: {"type":"created","collection":"passwords","record":{"id":"rec_123","site"
 - `better-auth` is an internal implementation choice; the public contract is cookie session + JWT access as defined here and in ADR-003.
 - **Storage (`/storage/*`):** backend strategy decisions (FS-first driver abstraction, container volume persistence, metadata-based versioning) are recorded in `docs/adr/ADR-005-file-storage-strategy.md`.
 - **Database (`/db/*`):** implementation decisions (owner scoping, M1 filter semantics, SSE in-process bus) are recorded in `docs/adr/ADR-004-database-api-service.md`.
+- **Dashboard (`apps/dashboard`):** operator UI and admin-only HTTP surfaces are specified in `docs/DASHBOARD-SPEC.md` and `docs/adr/ADR-006-dashboard-implementation.md`, not in this public contract.
 - Dashboard authentication is intentionally separate from the public API contract.

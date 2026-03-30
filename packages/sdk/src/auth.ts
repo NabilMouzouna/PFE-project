@@ -1,4 +1,4 @@
-import type { AppBaseConfig } from "./appbase";
+import type { AppBaseConfig } from "./appbase.js";
 import type {
   Session,
   User,
@@ -6,7 +6,7 @@ import type {
   LoginRequest,
   RefreshResponse,
   LogoutResponse,
-} from "@appbase/types";
+} from "@appbase-pfe/types";
 
 /** Auth state for conditional render and protected routes. */
 export type AuthState = {
@@ -69,8 +69,11 @@ export class AuthClient {
     return this.config.sessionStorageKey;
   }
 
+  /** All `/auth/*` routes require `x-api-key` (same as `auth.http` and API-SPEC). */
   private authFetch(init: RequestInit): RequestInit {
-    return { ...init, credentials: "include" };
+    const headers = new Headers(init.headers ?? undefined);
+    headers.set("x-api-key", this.config.apiKey);
+    return { ...init, headers, credentials: "include" };
   }
 
   private setSessionFromLogin(data: Session, issuedAt: number): void {
@@ -224,6 +227,21 @@ export class AuthClient {
     return { authenticated: true, user: { id: s.user.id, email: s.user.email } };
   };
 
+  /**
+   * Full user row from the session (email, timestamps, `customIdentity`), when the access token is valid.
+   * Use for profile UI; prefer {@link getAuthState} for minimal `{ id, email }` checks.
+   */
+  getCurrentUser = (): User | null => {
+    const s = this.session;
+    if (!s?.user?.id || typeof s.user.email !== "string" || s.user.email.length === 0) {
+      return null;
+    }
+    if (this.isAccessTokenStale()) {
+      return null;
+    }
+    return s.user;
+  };
+
   /** Resolves when the startup check (restore + optional refresh) is done. Use before gating protected routes. */
   ready = (): Promise<void> => this.initPromise;
 
@@ -253,4 +271,25 @@ export class AuthClient {
   getAccessToken(): string | null {
     return this.session?.accessToken ?? null;
   }
+
+  /**
+   * Ensures a usable access JWT for protected API routes (`/storage/*`, `/db/*`).
+   * Runs the startup restore hook, then refreshes via session cookie when the token is near expiry.
+   */
+  ensureAccessToken = async (): Promise<string> => {
+    await this.initPromise;
+    if (!this.session) {
+      throw new Error(
+        "Not authenticated. Call auth.signIn or auth.signUp before storage or database operations.",
+      );
+    }
+    if (this.isAccessTokenStale()) {
+      await this.refreshAccessToken();
+    }
+    const token = this.session.accessToken;
+    if (!token) {
+      throw new Error("No access token available.");
+    }
+    return token;
+  };
 }

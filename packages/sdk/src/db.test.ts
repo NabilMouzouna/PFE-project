@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { z } from "zod";
-import { DbClient, DbError } from "./db";
-import type { AuthClient } from "./auth";
+import { DbClient, DbError } from "./db.js";
+import type { AuthClient } from "./auth.js";
 
 const mockAuth: AuthClient = {
   getAccessToken: () => "mock-token",

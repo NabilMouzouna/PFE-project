@@ -6,8 +6,10 @@ Auth for AppBase — simple. Session lives in an HttpOnly cookie; the access tok
 
 ## Quick start
 
+**Headers:** `signIn`, `signUp`, `signOut`, and `refresh` all send **`x-api-key`** from `AppBase.init({ apiKey })`, same as `auth.http`. On the API, **`NODE_ENV=development`** normally requires a key registered in the DB (`pnpm --filter api create-api-key`). **`NODE_ENV=test`** (Vitest) skips API-key checks on `/auth/*`, `/db/*`, and `/storage/*`. For a **local dev server** with `NODE_ENV=development`, you can set **`DEV_SKIP_API_KEY=true`** in `apps/api/.env` to get the same bypass (development only; never in production).
+
 ```ts
-import { AppBase } from "@appbase/sdk";
+import { AppBase } from "@appbase-pfe/sdk";
 
 const appbase = AppBase.init({
   endpoint: "http://localhost:3000",
@@ -42,7 +44,7 @@ const { authenticated, user } = getAuthState();
 
 ## React / Next.js
 
-Use `@appbase/sdk/react` — one provider, one hook. Startup check and subscriptions run under the hood.
+Use `@appbase-pfe/sdk/react` — one provider, one hook. Startup check and subscriptions run under the hood.
 
 ### Setup
 
@@ -51,8 +53,8 @@ Use `@appbase/sdk/react` — one provider, one hook. Startup check and subscript
 "use client";
 
 import { useMemo } from "react";
-import { AppBase } from "@appbase/sdk";
-import { AppBaseProvider as SDKProvider } from "@appbase/sdk/react";
+import { AppBase } from "@appbase-pfe/sdk";
+import { AppBaseProvider as SDKProvider } from "@appbase-pfe/sdk/react";
 
 export function AppBaseProvider({ children }: { children: React.ReactNode }) {
   const appbase = useMemo(() =>
@@ -66,7 +68,7 @@ export function AppBaseProvider({ children }: { children: React.ReactNode }) {
   return <SDKProvider appBase={appbase}>{children}</SDKProvider>;
 }
 
-export { useAppBase, useAuth, useRequireAuth } from "@appbase/sdk/react";
+export { useAppBase, useAuth, useRequireAuth } from "@appbase-pfe/sdk/react";
 ```
 
 ```tsx

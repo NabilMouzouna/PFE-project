@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AppBase } from "./appbase";
+import { AppBase } from "./appbase.js";
 
 describe("AuthClient", () => {
   afterEach(() => {

@@ -148,7 +148,7 @@ Use **metadata tracking** as the source of truth, not filename suffix parsing.
 - Write uploads atomically (temp file + rename).
 - Store checksum/hash in metadata where feasible.
 - Enforce max upload size and content-type allowlist policy.
-- Ensure delete path removes file bytes and metadata coherently.
+- Delete path: M1 removes the **metadata row first**, then best-effort object delete. This is **not** a cross-store transaction; failed object removal can leave **orphan bytes** until an operator runs reconciliation and removes files manually (see `docs/STORAGE-OPERATIONS.md`).
 - Add periodic reconciliation tooling (detect metadata without object and object without metadata).
 
 ---

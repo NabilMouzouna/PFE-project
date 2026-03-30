@@ -5,7 +5,7 @@
 ### After Register/Login, copy `appbase_session=...` from the `Set-Cookie` response header into @sessionCookie below.
 
 @baseUrl = http://localhost:8000
-@apiKey = hs_live_mnlIKCBxPqvSGZLcDsNqAstnMihqTQwVAcwJESDFLxpgpBuxrvWzQBkpSjJkQVwl
+@apiKey = hs_live_RbLrRNoHnssCxsbqPOhtjSXrGaedLbFJQMEPuLGpFQKDTPKbaWWrzzMoeIVABCPk
 @sessionCookie = appbase_session=PASTE_VALUE_FROM_SET_COOKIE
 
 ###############################################################################

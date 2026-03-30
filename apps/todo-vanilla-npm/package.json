@@ -1,0 +1,20 @@
+{
+  "name": "todo-vanilla-npm",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "check-types": "tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@appbase-pfe/sdk": "^0.1.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "typescript": "5.9.2",
+    "vite": "^6.2.0"
+  }
+}

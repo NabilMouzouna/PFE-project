@@ -43,7 +43,7 @@ flowchart TB
     subgraph clients [Client Layer]
         operator[Operator Browser]
         demoApp[Demo Application]
-        sdk["@appbase/sdk"]
+        sdk["@appbase-pfe/sdk"]
     end
 
     subgraph baas [Single App BaaS Unit]
@@ -96,7 +96,7 @@ flowchart TB
             hostedApp[password-manager.appbase.local\nreserved for hosted app later]
         end
 
-        devDevice[Developer Device\n@appbase/sdk]
+        devDevice[Developer Device\n@appbase-pfe/sdk]
         ownerBrowser[App Owner Browser]
     end
 
@@ -361,7 +361,7 @@ The request/response-level public contract for the BaaS API is defined in [`API-
 
 ### App Container API — `apps/api/`
 
-The service API — consumed by `@appbase/sdk` and by the app-specific dashboard. The public contract uses AppBase-owned routes such as `/auth/*`, `/storage/*`, and `/db/*` even if auth is implemented internally with `better-auth`. Storage and database routes require a valid `x-api-key` header plus an access-token bearer header for user-scoped operations.
+The service API — consumed by `@appbase-pfe/sdk` and by the app-specific dashboard. The public contract uses AppBase-owned routes such as `/auth/*`, `/storage/*`, and `/db/*` even if auth is implemented internally with `better-auth`. Storage and database routes require a valid `x-api-key` header plus an access-token bearer header for user-scoped operations.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
@@ -465,3 +465,5 @@ Architecture decisions that shaped this document:
 | [ADR-003 — Auth Implementation](./adr/ADR-003-auth-implementation.md) | 3-token model (refresh token + JWT + API key); argon2id hashing; EdDSA signing | Auth flow in §3.1; `refresh_tokens` and `api_keys` schema in §4; JWT-on-hot-path pattern in §3.2 |
 | [ADR-004 — Database API Service](./adr/ADR-004-database-api-service.md) | Fastify `/db/*` plugin; `records` document model; owner isolation; in-process SSE | §3.4 sequence; `records` in §4; `/db/*` routes in §5; complements API-SPEC §7 |
 | [ADR-005 — File Storage Strategy](./adr/ADR-005-file-storage-strategy.md) | FS-first storage driver abstraction; container volume persistence; metadata-based versioning | §3.3 storage flow, `files.storage_path` in §4, persistence layout in §7; complements API-SPEC §6 |
+| [ADR-006 — Dashboard Implementation](./adr/ADR-006-dashboard-implementation.md) | Next.js operator console; BFF pattern for `x-api-key`; API key UX + rotation; admin surfaces | `apps/dashboard`; §5 admin routes; complements [DASHBOARD-SPEC.md](./DASHBOARD-SPEC.md) |
+| [ADR-007 — SDK Package Distribution](./adr/ADR-007-sdk-package-distribution.md) | Public **npm** as default registry for `@appbase-pfe/sdk` (+ types); GitHub Packages not default | External developer installs; complements [TICKET-012](../tasks/TICKET-012-sdk-npm-publish-readiness.md) |

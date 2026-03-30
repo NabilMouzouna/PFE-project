@@ -466,6 +466,7 @@ export async function registerDbRoutes(app: FastifyInstance) {
       // GET /db/collections/:collection/:id
       instance.get<{ Params: { collection: string; id: string } }>(
         "/collections/:collection/:id",
+        { schema: dbGetOneOpenApi },
         async (request, reply) => {
           const userId = requireUserId(request);
           if (!userId) {

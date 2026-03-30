@@ -1,0 +1,161 @@
+.grid {
+  display: grid;
+  gap: var(--appbase-space-4);
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.tile {
+  border-radius: var(--appbase-radius-card);
+  border: 1px solid var(--appbase-border-hairline);
+  background: #fff;
+  padding: var(--appbase-space-5);
+  box-shadow: 0 1px 3px rgba(27, 42, 74, 0.05);
+  display: flex;
+  flex-direction: column;
+  min-height: 160px;
+}
+
+.tileHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--appbase-space-3);
+}
+
+.tileIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.iconHealth {
+  color: #0f766e;
+  background: rgba(45, 181, 168, 0.2);
+}
+
+.iconApi {
+  color: #4338ca;
+  background: rgba(129, 140, 248, 0.22);
+}
+
+.iconUsers {
+  color: #1d4ed8;
+  background: rgba(96, 165, 250, 0.24);
+}
+
+.iconStorage {
+  color: #be185d;
+  background: rgba(244, 114, 182, 0.2);
+}
+
+.iconDb {
+  color: #0369a1;
+  background: rgba(56, 189, 248, 0.22);
+}
+
+.tileHealth {
+  border-color: rgba(45, 181, 168, 0.35);
+  background: linear-gradient(160deg, #fff 0%, var(--appbase-accent-db-bg) 120%);
+}
+
+.tileApi {
+  border-color: rgba(99, 102, 241, 0.28);
+}
+
+.tileUsers {
+  border-color: rgba(59, 130, 246, 0.24);
+}
+
+.tileStorage {
+  border-color: rgba(232, 135, 154, 0.4);
+  background: linear-gradient(160deg, #fff 0%, var(--appbase-accent-storage-bg) 120%);
+}
+
+.tileDb {
+  border-color: rgba(45, 181, 168, 0.35);
+  background: linear-gradient(160deg, #fff 0%, rgba(232, 247, 245, 0.65) 100%);
+}
+
+.tileKicker {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--appbase-ink-muted);
+  margin-bottom: var(--appbase-space-3);
+}
+
+.stat {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--appbase-ink-navy);
+  line-height: 1.2;
+}
+
+.statRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--appbase-space-2);
+  margin-bottom: var(--appbase-space-2);
+}
+
+.tileSub {
+  margin: var(--appbase-space-2) 0 0;
+  font-size: 0.875rem;
+  color: var(--appbase-ink-muted);
+  flex: 1;
+}
+
+.tileLink {
+  margin-top: auto;
+  padding-top: var(--appbase-space-3);
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--appbase-accent-db-border);
+  text-decoration: none;
+}
+
+.tileLink:hover {
+  text-decoration: underline;
+}
+
+.apiUrl {
+  margin: 0;
+  font-size: 0.8125rem;
+  word-break: break-all;
+  font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace;
+  color: var(--appbase-ink-navy);
+  line-height: 1.45;
+}
+
+.checkList {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.875rem;
+  color: var(--appbase-ink-muted);
+}
+
+.checkList strong {
+  color: var(--appbase-ink-navy);
+  font-weight: 600;
+}
+
+.inlineCode {
+  font-size: 0.8125em;
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+  background: rgba(27, 42, 74, 0.06);
+}
+
+@media (max-width: 520px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tile {
+    min-height: 0;
+  }
+}

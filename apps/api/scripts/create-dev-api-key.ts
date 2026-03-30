@@ -1,8 +1,9 @@
 /**
- * Creates an API key for local development.
- * Run: pnpm --filter api exec tsx scripts/create-dev-api-key.ts
+ * Legacy CLI: creates an instance API key in the DB.
+ * Prefer the operator dashboard: Settings → API key → Generate (no env required for first key).
  *
- * Start the API at least once first so the DB exists.
+ * Use this script only for automation/CI. Start the API once so the DB exists.
+ * Run: pnpm --filter api exec tsx scripts/create-dev-api-key.ts
  */
 import { config as loadDotenv } from "dotenv";
 import path from "node:path";
@@ -11,23 +12,21 @@ import { createDb } from "@appbase/db";
 import * as schema from "@appbase/db/schema";
 import { createAuth } from "../src/lib/auth";
 import { loadEnv } from "../src/config/env";
+import { API_KEY_INSTANCE_USER_ID } from "../src/constants/bootstrap-user";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 loadDotenv({ path: path.resolve(__dirname, "../.env"), quiet: true });
 
 const env = loadEnv(process.env);
-const dbPath = path.resolve(process.cwd(), env.DB_PATH);
-const db = createDb(dbPath);
-
-const APP_USER_ID = "app-default-bootstrap";
+const db = createDb(env.DB_PATH);
 
 async function ensureBootstrapUser() {
   const users = await db.select().from(schema.user);
-  if (users.some((u) => u.id === APP_USER_ID)) return;
+  if (users.some((u) => u.id === API_KEY_INSTANCE_USER_ID)) return;
 
   const now = new Date();
   await db.insert(schema.user).values({
-    id: APP_USER_ID,
+    id: API_KEY_INSTANCE_USER_ID,
     name: "App Bootstrap",
     email: "bootstrap@appbase.local",
     emailVerified: false,
@@ -43,8 +42,7 @@ async function main() {
   const result = await auth.api.createApiKey({
     body: {
       name: "dev-api-key",
-      userId: APP_USER_ID,
-      expiresIn: 60 * 60 * 24 * 365, // 1 year
+      userId: API_KEY_INSTANCE_USER_ID,
     },
   });
 
