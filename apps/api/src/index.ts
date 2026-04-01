@@ -14,6 +14,12 @@ async function main() {
   const env = loadEnv(process.env);
   const app = await buildApp({ env });
 
+  if (env.devSkipApiKey) {
+    app.log.warn(
+      "DEV_SKIP_API_KEY: x-api-key is not required for /auth, /db, /storage in this dev server. Never enable in production.",
+    );
+  }
+
   const shutdown = async (signal: NodeJS.Signals) => {
     app.log.info({ signal }, "Shutting down AppBase API");
     await app.close();
@@ -30,7 +36,7 @@ async function main() {
 
   await app.listen({ host: env.HOST, port: env.PORT });
   app.log.info(
-    { host: env.HOST, port: env.PORT, dbPath: env.DB_PATH },
+    { host: env.HOST, port: env.PORT, dbPath: env.DB_PATH, storageRoot: env.storageRoot },
     "AppBase API started",
   );
 }

@@ -36,6 +36,32 @@ export const HEALTH_PATH = "/health";
 /** Skipped by API key middleware: OpenAPI / Swagger UI. */
 export const DOCS_PATH_PREFIX = "/docs";
 
+/** Skipped by API key middleware: first-operator bootstrap (guarded by bootstrap secret + DB check). */
+export const BOOTSTRAP_FIRST_OPERATOR_PATH = "/bootstrap/first-operator";
+/** Prefix for operator admin routes. */
+export const ADMIN_PATH_PREFIX = "/admin/";
+
+/**
+ * Instance API key routes: auth is `x-api-key` or admin JWT in route handlers (operator console without
+ * preconfigured `DASHBOARD_API_KEY`).
+ */
+export const ADMIN_INSTANCE_API_KEY_PATHS: readonly { method: string; path: string }[] = [
+  { method: "GET", path: "/admin/api-key" },
+  { method: "GET", path: "/admin/api-key/setup-status" },
+  { method: "POST", path: "/admin/api-key/bootstrap" },
+  { method: "POST", path: "/admin/api-key/rotate" },
+];
+
+export function isAdminInstanceApiKeyPath(method: string, urlPath: string): boolean {
+  const p = urlPath.split("?")[0] ?? "";
+  return ADMIN_INSTANCE_API_KEY_PATHS.some((x) => x.method === method && x.path === p);
+}
+
+export function isAdminPath(urlPath: string): boolean {
+  const p = urlPath.split("?")[0] ?? "";
+  return p.startsWith(ADMIN_PATH_PREFIX);
+}
+
 /**
  * In `NODE_ENV=test`, these POST paths skip `x-api-key` so auth integration tests run without a key.
  */
@@ -46,8 +72,8 @@ export const TEST_EXCLUDED_AUTH_POST_PATHS: readonly string[] = [
   "/auth/logout",
 ];
 
-/** In test: /db/* skips x-api-key so db integration tests run with JWT only. */
-export const TEST_EXCLUDED_API_KEY_PATHS: readonly string[] = ["/db/"];
+/** In test: /db/* and /storage/* skip x-api-key so integration tests run with JWT only. */
+export const TEST_EXCLUDED_API_KEY_PATHS: readonly string[] = ["/db/", "/storage/"];
 
 
 /** URL path prefixes that require a verified JWT access token. */

@@ -5,17 +5,20 @@
   "type": "module",
   "scripts": {
     "create-api-key": "tsx scripts/create-dev-api-key.ts",
+    "promote-operator-admin": "tsx scripts/promote-operator-admin.ts",
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "storage:reconcile": "tsx scripts/storage-reconcile.ts"
   },
   "dependencies": {
     "@appbase/db": "workspace:*",
-    "@appbase/types": "workspace:*",
+    "@appbase/storage": "workspace:*",
+    "@appbase-pfe/types": "workspace:*",
     "drizzle-orm": "^0.45.1",
     "@better-auth/api-key": "^1.5.5",
     "@fastify/cookie": "^11.0.2",
@@ -34,7 +37,7 @@
   },
   "devDependencies": {
     "@appbase/config": "workspace:*",
-    "@appbase/sdk": "workspace:*",
+    "@appbase-pfe/sdk": "workspace:*",
     "@types/node": "^22.13.14",
     "pino-pretty": "^13.0.0",
     "tsx": "^4.21.0",

@@ -46,6 +46,7 @@ export function createAuth(db: AppDb, baseUrl: string, secret: string) {
             email: user.email,
             appId: user.appId,
             metadata: user.metadata,
+            role: user.role ?? null,
           }),
         },
       }),

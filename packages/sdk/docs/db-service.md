@@ -9,7 +9,7 @@ AppBase’s document-style database: **collections** (named groups of records), 
 ## Quick start
 
 ```ts
-import { AppBase } from "@appbase/sdk";
+import { AppBase } from "@appbase-pfe/sdk";
 import { z } from "zod";
 
 const appbase = AppBase.init({
@@ -158,7 +158,7 @@ The subscription uses fetch + ReadableStream so it can send the Bearer token (un
 ## Error handling
 
 ```ts
-import { DbError } from "@appbase/sdk";
+import { DbError } from "@appbase-pfe/sdk";
 
 try {
   await todos.get("missing-id");
@@ -179,7 +179,7 @@ Common codes: `NOT_FOUND`, `VALIDATION_ERROR`, `INVALID_TOKEN`, `INVALID_API_KEY
 
 ```ts
 import { z } from "zod";
-import { AppBase } from "@appbase/sdk";
+import { AppBase } from "@appbase-pfe/sdk";
 
 const appbase = AppBase.init({ endpoint: "...", apiKey: "...", sessionStorageKey: "..." });
 

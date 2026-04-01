@@ -43,6 +43,9 @@ const userSchema = {
     email: { type: "string", format: "email" },
     createdAt: { type: "string", format: "date-time" },
     updatedAt: { type: "string", format: "date-time" },
+    role: { type: "string", nullable: true },
+    banned: { type: "boolean", nullable: true },
+    emailVerified: { type: "boolean", nullable: true },
     customIdentity: { type: "object", additionalProperties: { type: "string" } },
   },
   required: ["id", "email", "createdAt", "updatedAt"],
@@ -194,6 +197,9 @@ function formatUser(user: {
   createdAt: Date;
   updatedAt: Date;
   metadata?: string | null;
+  role?: string | null;
+  banned?: boolean | null;
+  emailVerified?: boolean | null;
 }) {
   const customIdentity = parseCustomIdentity(user.metadata);
   return {
@@ -201,6 +207,9 @@ function formatUser(user: {
     email: user.email,
     createdAt: user.createdAt instanceof Date ? user.createdAt.toISOString() : user.createdAt,
     updatedAt: user.updatedAt instanceof Date ? user.updatedAt.toISOString() : user.updatedAt,
+    role: user.role ?? null,
+    banned: user.banned ?? null,
+    emailVerified: user.emailVerified ?? null,
     ...(customIdentity != null ? { customIdentity } : {}),
   };
 }
@@ -306,7 +315,16 @@ export async function registerAuthRoutes(app: FastifyInstance) {
 
     let session: {
       token: string;
-      user: { id: string; email: string; createdAt: Date; updatedAt: Date; metadata?: string | null };
+      user: {
+        id: string;
+        email: string;
+        createdAt: Date;
+        updatedAt: Date;
+        metadata?: string | null;
+        role?: string | null;
+        banned?: boolean | null;
+        emailVerified?: boolean | null;
+      };
     };
     try {
       session = await auth.api.signInEmail({
@@ -354,7 +372,16 @@ export async function registerAuthRoutes(app: FastifyInstance) {
 
     let session: {
       token: string;
-      user: { id: string; email: string; createdAt: Date; updatedAt: Date; metadata?: string | null };
+      user: {
+        id: string;
+        email: string;
+        createdAt: Date;
+        updatedAt: Date;
+        metadata?: string | null;
+        role?: string | null;
+        banned?: boolean | null;
+        emailVerified?: boolean | null;
+      };
     };
     try {
       session = await auth.api.signInEmail({
