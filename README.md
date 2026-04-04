@@ -216,21 +216,26 @@ The public AppBase contract is the BaaS API consumed by SDKs and external client
 
 **Run the bundled API + dashboard in Docker:** copy-paste steps are in [`docs/DOCKER-LOCAL.md`](./docs/DOCKER-LOCAL.md) (defaults: API **8000**, dashboard **3001**).
 
+Ports depend on how you run M1:
+
+| Mode | Dashboard | BaaS API |
+|------|-----------|----------|
+| Monorepo dev (`pnpm dev` from root) | http://localhost:3001 | http://localhost:3000 (default `PORT`) |
+| Docker image (see `DOCKER-LOCAL.md`) | http://localhost:3001 | http://localhost:8000 |
+
 ```
-Single host
+Single host (paths on disk — same in dev and Docker when using a data volume)
 │
-├── Dashboard UI        → localhost:3001
-├── BaaS API            → localhost:3000
-├── SQLite              → data/appbase.sqlite
-└── File storage        → data/storage/
+├── SQLite         → data/appbase.sqlite  (or /app/data in Docker)
+└── File storage   → data/storage/         (or /app/data/storage in Docker)
 ```
 
 ### MVP API Surface
 
-The API side of that BaaS unit is a single Fastify process with three service plugins behind API key validation middleware (`/auth/register` and `/auth/login` are public):
+The API side of that BaaS unit is a single Fastify process with three service plugins behind API key validation middleware (`/auth/register` and `/auth/login` are public). Paths below are relative to your API base URL (e.g. `http://localhost:3000` with `pnpm dev`, or `http://localhost:8000` with the Docker image).
 
 ```
-localhost:3000
+<API_BASE_URL>
 │
 ├── /auth
 │   ├── POST /register
@@ -271,7 +276,7 @@ The SDK is what makes this feel like Amplify and not just a REST API. It needs t
 import { AppBase } from '@appbase-pfe/sdk'
 
 const client = AppBase.init({
-  endpoint: 'http://localhost:3000',
+  endpoint: 'http://localhost:3000', // pnpm dev default; Docker image → http://localhost:8000
   apiKey: 'hs_live_xxxx'
 })
 
@@ -354,11 +359,11 @@ Deliverable: one app-specific BaaS unit, a working SDK, and a password manager d
 
 ### M1 Demo Scenario
 
-1. Start the AppBase BaaS unit on a local machine
-1. Open the app-specific dashboard on `localhost:3001`
-1. Generate an API key and inspect app users, storage usage, and records
-1. Point the password manager demo app at `http://localhost:3000`
-1. The password manager authenticates users, stores credentials, uploads files, and receives live updates — all via the SDK
+1. Start the AppBase BaaS unit on a local machine (`pnpm dev` from the monorepo root, or the Docker flow in [`docs/DOCKER-LOCAL.md`](./docs/DOCKER-LOCAL.md)).
+1. Open the app-specific dashboard at **http://localhost:3001** (dashboard port is **3001** in both dev and Docker).
+1. Generate an API key and inspect app users, storage usage, and records.
+1. Point the password manager demo app at the API: **http://localhost:3000** when using `pnpm dev`, or **http://localhost:8000** when using the Docker image.
+1. The password manager authenticates users, stores credentials, uploads files, and receives live updates — all via the SDK.
 1. **Pull the network cable to the internet.** Everything still works.
 
 ### Full Platform Demo Scenario (M2+)
