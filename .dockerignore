@@ -13,10 +13,13 @@ build
 .git
 .gitignore
 
-# Development
+# Development / secrets (any app under apps/)
 .env
 .env.*
+**/.env
+**/.env.local
 !.env.example
+!**/.env.example
 coverage
 *.log
 .DS_Store
@@ -44,3 +47,4 @@ docs
 
 # Data (mounted at runtime)
 data
+apps/*/data

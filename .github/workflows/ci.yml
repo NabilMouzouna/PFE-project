@@ -51,3 +51,8 @@ jobs:
       - name: Unit & integration tests (api)
         run: pnpm --filter api test
 
+      - name: Build with Turbo (dashboard + api)
+        run: pnpm exec turbo run build --filter=dashboard --filter=api
+
+      - name: Docker image (smoke build)
+        run: docker build -t appbase:ci .

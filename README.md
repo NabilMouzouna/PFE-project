@@ -214,6 +214,8 @@ In M1, the BaaS unit is one API plus one app-specific dashboard. The demo applic
 
 The public AppBase contract is the BaaS API consumed by SDKs and external clients. Dashboard authentication is separate from that public contract and may use a simpler browser-oriented auth flow.
 
+**Run the bundled API + dashboard in Docker:** copy-paste steps are in [`docs/DOCKER-LOCAL.md`](./docs/DOCKER-LOCAL.md) (defaults: API **8000**, dashboard **3001**).
+
 ```
 Single host
 │

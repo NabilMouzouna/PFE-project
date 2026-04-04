@@ -13,8 +13,8 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
-    "docker:build": "docker build -t appbase-api:latest .",
-    "docker:run": "docker run -p 3000:3000 -v appbase-data:/app/data appbase-api:latest"
+    "docker:build": "docker build -t appbase:latest .",
+    "docker:run": "docker run --rm -p 8000:8000 -p 3001:3001 -e AUTH_SECRET=dev-docker-secret-min-32-chars-required -v appbase-data:/app/data appbase:latest"
   },
   "devDependencies": {
     "prettier": "^3.7.4",

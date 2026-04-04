@@ -10,7 +10,7 @@ const API_PACKAGE_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)),
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   HOST: z.string().min(1).default("0.0.0.0"),
-  PORT: z.coerce.number().int().positive().default(3000),
+  PORT: z.coerce.number().int().positive().default(8000),
   /** Relative paths resolved against `apps/api` (same as `STORAGE_ROOT`). */
   DB_PATH: z.string().min(1).default("data/appbase.sqlite"),
   /** Absolute or relative to `apps/api`; default production `/app/data/storage`, else `apps/api/data/storage`. */
